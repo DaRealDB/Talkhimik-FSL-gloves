@@ -22,4 +22,11 @@ class ConfidenceThresholds {
     if (confidence >= amber) return ConfidenceLevel.medium;
     return ConfidenceLevel.low;
   }
+
+  /// Stored name for the FR-10 log schema ('green' | 'amber' | 'red').
+  static String levelName(ConfidenceLevel level) => switch (level) {
+        ConfidenceLevel.high => 'green',
+        ConfidenceLevel.medium => 'amber',
+        ConfidenceLevel.low => 'red',
+      };
 }
