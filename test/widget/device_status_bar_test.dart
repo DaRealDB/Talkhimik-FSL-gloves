@@ -84,4 +84,40 @@ void main() {
     expect(find.byKey(DeviceStatusBar.errorChipKey), findsOneWidget);
     expect(find.text(AppStrings.sensorFault), findsOneWidget);
   });
+
+  testWidgets('real glove shows a connect button and surfaces failures',
+      (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        gloveConnectionProvider.overrideWithValue(fake),
+        // The real connection connects explicitly (C-S1).
+        gloveIsMockProvider.overrideWithValue(false),
+        gloveControllerProvider
+            .overrideWith(() => GloveController((d) async {})),
+      ],
+      child: const MaterialApp(home: Scaffold(body: DeviceStatusBar())),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining(AppStrings.realGloveName), findsOneWidget);
+    final button = find.byKey(DeviceStatusBar.connectButtonKey);
+    expect(button, findsOneWidget);
+
+    // A failed attempt surfaces the friendly message once, no banner.
+    fake.throwOnConnect = Exception('simulated scan timeout');
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.connectFailed), findsOneWidget);
+    expect(find.byKey(DeviceStatusBar.connectionLostBannerKey), findsNothing);
+    expect(fake.connectCalls, 1);
+
+    // Let the snackbar elapse; the next attempt succeeds silently.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    fake.throwOnConnect = null;
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(fake.connectCalls, 2);
+    expect(find.text(AppStrings.connectFailed), findsNothing);
+  });
 }

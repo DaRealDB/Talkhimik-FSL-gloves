@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:talkhimik_app/application/glove_controller.dart';
 import 'package:talkhimik_app/application/providers.dart';
+import 'package:talkhimik_app/core/strings/app_strings.dart';
+import 'package:talkhimik_app/data/glove/ble_permissions.dart';
 import 'package:talkhimik_app/data/glove/glove_connection.dart';
 import 'package:talkhimik_app/domain/models/device_status.dart';
 
@@ -163,5 +165,38 @@ void main() {
     await emitPhase(GloveConnectionPhase.disconnected);
     await flushAsync();
     expect(requestedDelays.last, const Duration(seconds: 1));
+  });
+
+  test('failed explicit connect records a message and schedules no '
+      'reconnect', () async {
+    final c = makeContainer();
+    fake.throwOnConnect = Exception('glove not found');
+
+    await c.read(gloveControllerProvider.notifier).connect();
+    final s = state(c);
+    expect(s.connectError, AppStrings.connectFailed);
+    expect(s.phase, GloveConnectionPhase.disconnected);
+    expect(s.connectionLost, isFalse);
+    await flushAsync();
+    expect(fake.connectCalls, 1); // no auto-retry loop
+  });
+
+  test('permission denial maps to the C-S1 message', () async {
+    final c = makeContainer();
+    fake.throwOnConnect = const BlePermissionDeniedException();
+
+    await c.read(gloveControllerProvider.notifier).connect();
+    expect(state(c).connectError, AppStrings.blePermissionDenied);
+  });
+
+  test('a successful connect clears a previous connectError', () async {
+    final c = makeContainer();
+    fake.throwOnConnect = Exception('first try fails');
+    await c.read(gloveControllerProvider.notifier).connect();
+    expect(state(c).connectError, isNotNull);
+
+    fake.throwOnConnect = null;
+    await c.read(gloveControllerProvider.notifier).connect();
+    expect(state(c).connectError, isNull);
   });
 }

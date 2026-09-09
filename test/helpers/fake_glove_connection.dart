@@ -20,6 +20,10 @@ class FakeGloveConnection implements GloveConnection {
   /// range so the controller's escalation logic can be exercised.
   bool failReconnects = false;
 
+  /// When set, [connect] throws it — simulating permission denial, a glove
+  /// that never appears in the scan, etc.
+  Exception? throwOnConnect;
+
   @override
   Stream<GestureResultPacket> get gestureResults => gestures.stream;
 
@@ -32,6 +36,8 @@ class FakeGloveConnection implements GloveConnection {
   @override
   Future<void> connect() async {
     connectCalls++;
+    final error = throwOnConnect;
+    if (error != null) throw error;
   }
 
   @override
