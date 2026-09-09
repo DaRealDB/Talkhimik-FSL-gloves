@@ -15,7 +15,9 @@ dependencies:
   hive_ce: 2.19.3
   meta: ^1.19.0
   path_provider: 2.1.5
-  permission_handler: 13.0.2
+  # Pinned 12.x: 13.x pulls permission_handler_android 14.x whose
+  # compileSdk 37 exceeds AGP 9.1's supported max (36) on Flutter 3.47.
+  permission_handler: 12.0.3
   shared_preferences: 2.5.5
 
 dev_dependencies:
