@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../application/glove_controller.dart';
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
 import '../../data/glove/glove_connection.dart';

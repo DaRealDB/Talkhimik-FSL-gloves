@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
-import '../../core/constants/gatt_ids.dart';
 import '../../domain/models/device_status.dart';
 import '../../domain/models/gesture_result.dart';
 import 'glove_connection.dart';
