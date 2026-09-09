@@ -1,0 +1,87 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:talkhimik_app/application/glove_controller.dart';
+import 'package:talkhimik_app/application/providers.dart';
+import 'package:talkhimik_app/core/strings/app_strings.dart';
+import 'package:talkhimik_app/data/glove/glove_connection.dart';
+import 'package:talkhimik_app/domain/models/device_status.dart';
+import 'package:talkhimik_app/ui/widgets/device_status_bar.dart';
+
+import '../helpers/fake_glove_connection.dart';
+
+void main() {
+  late FakeGloveConnection fake;
+
+  Widget wrap(Widget child) => ProviderScope(
+        overrides: [
+          gloveConnectionProvider.overrideWithValue(fake),
+          // The fake is not a MockGloveConnection; pin the demo branch so
+          // these tests exercise the mock label.
+          gloveIsMockProvider.overrideWithValue(true),
+          gloveControllerProvider
+              .overrideWith(() => GloveController((d) async {})),
+        ],
+        child: MaterialApp(home: Scaffold(body: child)),
+      );
+
+  setUp(() {
+    fake = FakeGloveConnection();
+  });
+
+  testWidgets('shows mock glove name and disconnected phase initially',
+      (tester) async {
+    await tester.pumpWidget(wrap(const DeviceStatusBar()));
+    expect(find.textContaining(AppStrings.mockGloveName), findsOneWidget);
+    expect(find.textContaining(AppStrings.disconnected), findsOneWidget);
+    expect(find.byKey(DeviceStatusBar.connectionLostBannerKey), findsNothing);
+  });
+
+  testWidgets('shows battery and connected state when ready',
+      (tester) async {
+    await tester.pumpWidget(wrap(const DeviceStatusBar()));
+    fake.emitPhase(GloveConnectionPhase.ready);
+    fake.emitStatus(const DeviceStatusPacket(batteryPercent: 87));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('87%'), findsOneWidget);
+    expect(find.textContaining(AppStrings.connected), findsOneWidget);
+  });
+
+  testWidgets('surfaces the connection lost banner on link drop',
+      (tester) async {
+    await tester.pumpWidget(wrap(const DeviceStatusBar()));
+    fake.emitPhase(GloveConnectionPhase.ready);
+    await tester.pumpAndSettle();
+
+    fake.emitPhase(GloveConnectionPhase.disconnected);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(DeviceStatusBar.connectionLostBannerKey), findsOneWidget);
+    expect(find.text(AppStrings.connectionLost), findsOneWidget);
+  });
+
+  testWidgets('clears the banner when the link returns', (tester) async {
+    await tester.pumpWidget(wrap(const DeviceStatusBar()));
+    fake.emitPhase(GloveConnectionPhase.disconnected);
+    await tester.pumpAndSettle();
+    expect(find.byKey(DeviceStatusBar.connectionLostBannerKey), findsOneWidget);
+
+    fake.emitPhase(GloveConnectionPhase.ready);
+    await tester.pumpAndSettle();
+    expect(find.byKey(DeviceStatusBar.connectionLostBannerKey), findsNothing);
+  });
+
+  testWidgets('shows an error chip for sensor faults', (tester) async {
+    await tester.pumpWidget(wrap(const DeviceStatusBar()));
+    fake.emitPhase(GloveConnectionPhase.ready);
+    fake.emitStatus(const DeviceStatusPacket(
+      batteryPercent: 80,
+      lastErrorCode: 1, // sensor fault
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(DeviceStatusBar.errorChipKey), findsOneWidget);
+    expect(find.text(AppStrings.sensorFault), findsOneWidget);
+  });
+}
