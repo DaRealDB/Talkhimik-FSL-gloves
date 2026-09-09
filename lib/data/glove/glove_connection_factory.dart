@@ -12,15 +12,22 @@ import 'mock_glove_connection.dart';
 /// mock — which is also exactly what development, demos, and tests want.
 ///
 /// [forceMock] (the Settings "Force mock" dev flag, FR field-testing aid)
-/// is honored once the settings layer is wired in M6; on Android it lets a
-/// researcher demo without hardware.
+/// lets a researcher demo without hardware on Android.
 class GloveConnectionFactory {
   GloveConnectionFactory._();
 
   static GloveConnection create({bool forceMock = false}) {
     final onMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
-    return (onMobile && !forceMock)
-        ? FlutterBlueGloveConnection()
-        : MockGloveConnection();
+    return createWith(onMobile: onMobile, forceMock: forceMock);
   }
+
+  /// Test seam: platform detection overridden so the Android/iOS branch is
+  /// unit-testable off-device.
+  static GloveConnection createWith({
+    required bool onMobile,
+    required bool forceMock,
+  }) =>
+      (onMobile && !forceMock)
+          ? FlutterBlueGloveConnection()
+          : MockGloveConnection();
 }
