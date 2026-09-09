@@ -2,11 +2,13 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:talkhimik_app/application/providers.dart';
 import 'package:talkhimik_app/data/glove/glove_connection.dart';
 import 'package:talkhimik_app/data/glove/mock_glove_connection.dart';
+import 'package:talkhimik_app/data/storage/calibration_store.dart';
 import 'package:talkhimik_app/data/storage/settings_service.dart';
 import 'package:talkhimik_app/data/tts/tts_service.dart';
 import 'package:talkhimik_app/domain/repositories/log_store.dart';
 
 import 'fake_tts_service.dart';
+import 'in_memory_calibration_store.dart';
 import 'in_memory_log_store.dart';
 import 'in_memory_settings_service.dart';
 
@@ -18,6 +20,7 @@ List<Override> testOverrides({
   LogStore? logStore,
   TtsService? tts,
   SettingsService? settings,
+  CalibrationProfileStore? calibrationStore,
   bool? gloveIsMock,
 }) =>
     [
@@ -35,4 +38,6 @@ List<Override> testOverrides({
       ttsServiceProvider.overrideWithValue(tts ?? FakeTtsService()),
       settingsServiceProvider
           .overrideWithValue(settings ?? InMemorySettingsService()),
+      calibrationProfileStoreProvider.overrideWithValue(
+          calibrationStore ?? InMemoryCalibrationProfileStore()),
     ];

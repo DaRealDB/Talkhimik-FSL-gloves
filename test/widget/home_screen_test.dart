@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:talkhimik_app/app.dart';
 import 'package:talkhimik_app/application/providers.dart';
 import 'package:talkhimik_app/core/strings/app_strings.dart';
 import 'package:talkhimik_app/data/glove/mock_glove_connection.dart';
@@ -136,5 +137,27 @@ void main() {
 
     expect(find.text('A'), findsOneWidget); // transcript unaffected
     expect(tts.spoken, isEmpty); // FR-2 mute respected
+  });
+
+  testWidgets('app bar navigates to calibration and record mode',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: testOverrides(),
+        child: const TalkhimikApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.tune_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.calibrationTitle), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.fiber_manual_record_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.recordModeTitle), findsOneWidget);
   });
 }
