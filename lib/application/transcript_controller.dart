@@ -6,6 +6,7 @@ import '../core/constants/confidence.dart';
 import '../domain/models/gesture_result.dart';
 import '../domain/models/log_entry.dart';
 import '../domain/models/transcript_entry.dart';
+import '../domain/vocab/vocab_entry.dart';
 import 'providers.dart';
 
 /// Everything the conversation view shows (SRS FR-1, FR-3, FR-4, FR-7).
@@ -93,8 +94,10 @@ class TranscriptController extends Notifier<TranscriptState> {
       kind: TranscriptKind.signed,
       filipino: filipino,
       english: english,
+      wordId: packet.wordId,
       confidence: packet.confidence,
       confidenceLevel: level,
+      alternatives: packet.alternatives,
       source: ref.read(gloveIsMockProvider) ? 'mock' : 'glove',
     );
     state = state.copyWith(entries: [...state.entries, transcriptEntry]);
@@ -141,6 +144,77 @@ class TranscriptController extends Notifier<TranscriptState> {
         source: 'partner',
       ),
     ]);
+  }
+
+  /// FR-6: one-tap playback of a saved phrase — speaks it and echoes it as
+  /// a transcript bubble (no badge, no recognition log row).
+  void playSavedPhrase(VocabEntry phrase) {
+    state = state.copyWith(entries: [
+      ...state.entries,
+      TranscriptEntry(
+        id: _nextEntryId++,
+        kind: TranscriptKind.signed,
+        filipino: phrase.filipino,
+        english: phrase.english,
+        wordId: phrase.wordId,
+        source: 'savedPhrase',
+      ),
+    ]);
+    ref
+        .read(ttsControllerProvider.notifier)
+        .speak(state.language == 'en' ? phrase.english : phrase.filipino);
+  }
+
+  /// FR-5: replaces a bubble's text with the chosen alternative, marks it
+  /// corrected, and logs a `source=correction` row — the Cohen's Kappa
+  /// evidence for Chapter 3 (M5).
+  void correctEntry(int entryId, int newWordId) {
+    final index = state.entries.indexWhere((e) => e.id == entryId);
+    if (index < 0) return;
+    final old = state.entries[index];
+    final replacement = ref.read(vocabularyRepositoryProvider).lookup(newWordId);
+    if (replacement == null) return;
+
+    final correctedEntry = TranscriptEntry(
+      id: old.id,
+      kind: old.kind,
+      filipino: replacement.filipino,
+      english: replacement.english,
+      wordId: newWordId,
+      confidence: 100,
+      confidenceLevel: ConfidenceLevel.high,
+      corrected: true,
+      originalWordId: old.wordId,
+      source: 'correction',
+    );
+    final entries = [...state.entries];
+    entries[index] = correctedEntry;
+    state = state.copyWith(entries: entries);
+
+    ref
+        .read(ttsControllerProvider.notifier)
+        .speak(state.language == 'en' ? replacement.english : replacement.filipino);
+
+    final logEntry = GestureLogEntry(
+      participantId: state.participantId,
+      sessionId: state.sessionId,
+      wordId: newWordId,
+      filipinoText: replacement.filipino,
+      englishText: replacement.english,
+      confidence: 100,
+      confidenceLevel: 'green',
+      latencyMs: 0,
+      gloveTimestampMs: DateTime.now().millisecondsSinceEpoch,
+      receivedAt: DateTime.now(),
+      corrected: true,
+      originalWordId: old.wordId,
+      source: 'correction',
+      appVersion: ref.read(appVersionProvider),
+    );
+    unawaited(ref.read(logStoreProvider).appendEvent(logEntry).then<void>(
+          (_) {},
+          onError: (_) {},
+        ));
   }
 
   /// FR-3: clears the transcript view only — logged events stay (FR-10).

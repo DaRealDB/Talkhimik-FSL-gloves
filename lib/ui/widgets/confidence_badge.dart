@@ -15,11 +15,14 @@ class ConfidenceBadge extends StatelessWidget {
   final int confidence;
   final ConfidenceLevel level;
 
-  Color get _color => switch (level) {
+  /// Public so tests (and the FR-4 documentation) can assert the mapping.
+  static Color colorFor(ConfidenceLevel level) => switch (level) {
         ConfidenceLevel.high => AppColors.confidenceGreen,
         ConfidenceLevel.medium => AppColors.confidenceAmber,
         ConfidenceLevel.low => AppColors.confidenceRed,
       };
+
+  Color get _color => colorFor(level);
 
   @override
   Widget build(BuildContext context) {

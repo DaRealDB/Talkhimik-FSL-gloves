@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 
 import '../../core/constants/confidence.dart';
+import 'gesture_result.dart';
 
 /// Who produced a transcript bubble (FR-3, FR-7).
 enum TranscriptKind {
@@ -22,10 +23,12 @@ class TranscriptEntry {
     required this.kind,
     required this.filipino,
     required this.english,
+    this.wordId,
     this.confidence,
     this.confidenceLevel,
     this.corrected = false,
     this.originalWordId,
+    this.alternatives = const [],
     this.source = 'glove',
   });
 
@@ -39,9 +42,16 @@ class TranscriptEntry {
   final String filipino;
   final String english;
 
+  /// Vocabulary id, present for signed entries (needed for FR-5 logging).
+  final int? wordId;
+
   /// Present for [TranscriptKind.signed] entries only.
   final int? confidence;
   final ConfidenceLevel? confidenceLevel;
+
+  /// Top-3 alternatives carried by the gesture packet (FR-5); empty when
+  /// the glove sent none — the tap handler then falls back to the
+  /// vocabulary repository's neighbors.
 
   /// True when the signer corrected this bubble via quick rephrase (FR-5).
   final bool corrected;
@@ -49,7 +59,10 @@ class TranscriptEntry {
   /// The glove's original word id before a correction was applied.
   final int? originalWordId;
 
-  /// Provenance for logging: glove | mock | correction | partner.
+  final List<AlternativePrediction> alternatives;
+
+  /// Provenance for logging: glove | mock | correction | partner |
+  /// savedPhrase.
   final String source;
 
   String textFor(String language) => language == 'en' ? english : filipino;

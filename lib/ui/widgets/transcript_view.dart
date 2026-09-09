@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
+import '../../core/constants/confidence.dart';
 import '../../core/strings/app_strings.dart';
+import '../../domain/models/transcript_entry.dart';
+import 'quick_rephrase_sheet.dart';
 import 'transcript_bubble.dart';
 
 /// Scrollable chat-style transcript (SRS FR-3). Auto-scrolls to the newest
@@ -59,12 +62,35 @@ class _TranscriptViewState extends ConsumerState<TranscriptView> {
             entry: entry,
             language: transcript.language,
             largeText: transcript.largeText,
-            onTap: () => ref
-                .read(transcriptControllerProvider.notifier)
-                .reRead(entry.id),
+            onTap: () => _onBubbleTap(context, entry),
           ),
         );
       },
+    );
+  }
+
+  /// FR-5: low-confidence signed bubbles open the quick-rephrase sheet
+  /// (packet alternatives first, vocabulary neighbors as fallback);
+  /// everything else re-reads through TTS (FR-3).
+  void _onBubbleTap(BuildContext context, TranscriptEntry entry) {
+    final isLowConfidence = entry.kind == TranscriptKind.signed &&
+        (entry.confidenceLevel == ConfidenceLevel.low ||
+            entry.confidenceLevel == ConfidenceLevel.medium);
+    if (!isLowConfidence) {
+      ref.read(transcriptControllerProvider.notifier).reRead(entry.id);
+      return;
+    }
+
+    final alternatives = entry.alternatives.isNotEmpty
+        ? entry.alternatives
+        : ref
+            .read(vocabularyRepositoryProvider)
+            .fallbackAlternatives(entry.wordId ?? -1);
+    QuickRephraseSheet.show(
+      context,
+      ref,
+      entry: entry,
+      alternatives: alternatives,
     );
   }
 }

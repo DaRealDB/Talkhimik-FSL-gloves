@@ -6,6 +6,7 @@ import '../../core/strings/app_strings.dart';
 import '../widgets/demo_controls.dart';
 import '../widgets/device_status_bar.dart';
 import '../widgets/reply_panel.dart';
+import '../widgets/saved_phrases_panel.dart';
 import '../widgets/transcript_view.dart';
 
 /// Main screen: device status, transcript, reply panel, and (on dev
@@ -60,6 +61,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Expanded(
               child: TranscriptView(),
             ),
+            const SavedPhrasesPanel(),
             const ReplyPanel(),
           ],
         ),
