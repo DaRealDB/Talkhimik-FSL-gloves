@@ -41,4 +41,45 @@ class AppStrings {
   // Reply panel (FR-7)
   static const replyHint = 'Type a reply for the signer…';
   static const sendReply = 'Send reply';
+
+  // Calibration (FR-8)
+  static const calibrationTitle = 'Calibration';
+  static const calibrationIntroTitle = 'Calibrate the glove to the signer';
+  static const calibrationIntroBody = 'A guided flow prompts sample signs and '
+      'computes a per-user calibration profile that adjusts inference to '
+      'this signer. Each prompted letter is signed a few times; the glove\'s '
+      'reported confidence per sign is stored in the profile.';
+  static const calibrationNeedsParticipant =
+      'Set the participant ID in Settings before calibrating (FR-13).';
+  static const calibrationStart = 'Start calibration';
+  static const calibrationAbort = 'Abort';
+  static const calibrationSignPrompt = 'Sign this:';
+  static const calibrationRepsOf = 'reps';
+  static const calibrationLastSample = 'Last sample';
+  static const calibrationSavedTitle = 'Calibration profile saved';
+  static const calibrationNoProfile = 'No calibration profile yet.';
+  static const calibrationProfileSummary = 'Current profile';
+  static const calibrationDone = 'Done';
+
+  // Record mode (FR-9)
+  static const recordModeTitle = 'Record mode';
+  static const recordIntroTitle = 'Collect labeled training data';
+  static const recordIntroBody = 'Researcher mode: prompt FSL signs and '
+      'record labeled samples with the participant ID for the training '
+      'pipeline. Consent must be given before any data is collected.';
+  static const recordNeedsParticipant =
+      'Set the participant ID in Settings first (FR-13).';
+  static const recordNeedsConsent =
+      'Consent must be given before data collection (NFR-8).';
+  static const recordStart = 'Start recording';
+  static const recordSkip = 'Skip sign';
+  static const recordAbort = 'Abort';
+  static const recordSignPrompt = 'Sign this:';
+  static const recordLastSample = 'Last sample';
+  static const recordSamples = 'samples';
+  static const recordSession = 'Session';
+  static const recordDoneTitle = 'Recording complete';
+  static const recordLogsHint =
+      'Rows appear under Session logs for CSV export (FR-16).';
+  static const recordDone = 'Done';
 }

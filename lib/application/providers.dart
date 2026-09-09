@@ -7,12 +7,15 @@ import '../core/constants/app_version.dart';
 import '../data/glove/glove_connection.dart';
 import '../data/glove/glove_connection_factory.dart';
 import '../data/glove/mock_glove_connection.dart';
+import '../data/storage/calibration_store.dart';
 import '../data/storage/settings_service.dart';
 import '../data/tts/flutter_tts_service.dart';
 import '../data/tts/tts_service.dart';
 import '../data/vocab/default_vocabulary_repository.dart';
 import '../domain/repositories/log_store.dart';
 import '../domain/repositories/vocabulary_repository.dart';
+import 'calibration_controller.dart';
+import 'data_collection_controller.dart';
 import 'export_controller.dart';
 import 'glove_controller.dart';
 import 'settings_controller.dart';
@@ -75,3 +78,17 @@ final exportDirectoryProvider = Provider<Future<Directory>>((ref) async {
 
 final exportControllerProvider =
     NotifierProvider<ExportController, ExportState>(ExportController.new);
+
+/// FR-8: per-user calibration profile storage (shared_preferences JSON);
+/// overridden with an in-memory store in tests.
+final calibrationProfileStoreProvider = Provider<CalibrationProfileStore>(
+  (ref) => SharedPrefsCalibrationProfileStore(),
+);
+
+final calibrationControllerProvider =
+    NotifierProvider<CalibrationController, CalibrationState>(
+        CalibrationController.new);
+
+final dataCollectionControllerProvider =
+    NotifierProvider<DataCollectionController, CollectionState>(
+        DataCollectionController.new);
