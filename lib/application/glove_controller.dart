@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/constants/gatt_ids.dart';
+import '../core/strings/app_strings.dart';
+import '../data/glove/ble_permissions.dart';
 import '../data/glove/glove_connection.dart';
 import '../domain/models/device_status.dart';
 import 'providers.dart'; // composition root (Riverpod-idiomatic cycle)
@@ -14,6 +16,7 @@ class GloveState {
     this.status,
     this.connectionLost = false,
     this.reconnectAttempt = 0,
+    this.connectError,
   });
 
   final GloveConnectionPhase phase;
@@ -26,17 +29,23 @@ class GloveState {
   /// How many auto-reconnect attempts have fired (for the status bar).
   final int reconnectAttempt;
 
+  /// Friendly message from the last EXPLICIT connect attempt; the caller
+  /// surfaces it once (snackbar). Auto-reconnects never set this.
+  final String? connectError;
+
   GloveState copyWith({
     GloveConnectionPhase? phase,
     DeviceStatusPacket? status,
     bool? connectionLost,
     int? reconnectAttempt,
+    String? connectError,
   }) =>
       GloveState(
         phase: phase ?? this.phase,
         status: status ?? this.status,
         connectionLost: connectionLost ?? this.connectionLost,
         reconnectAttempt: reconnectAttempt ?? this.reconnectAttempt,
+        connectError: connectError,
       );
 }
 
@@ -56,6 +65,7 @@ class GloveController extends Notifier<GloveState> {
   StreamSubscription<DeviceStatusPacket>? _statusSub;
   StreamSubscription<GloveConnectionPhase>? _phaseSub;
   bool _manualDisconnect = false;
+  bool _explicitConnectInFlight = false;
   int _attempt = 0;
   int _generation = 0;
 
@@ -73,10 +83,25 @@ class GloveController extends Notifier<GloveState> {
   }
 
   /// Manual connect (e.g. user taps "Connect"); clears the manual-disconnect
-  /// flag so a later link drop auto-reconnects again.
+  /// flag so a later link drop auto-reconnects again. A failed attempt
+  /// records a friendly message (surfaced by the caller) and resets the
+  /// phase without scheduling a reconnect — the user retries explicitly.
   Future<void> connect() async {
     _manualDisconnect = false;
-    await ref.read(gloveConnectionProvider).connect();
+    _explicitConnectInFlight = true;
+    state = state.copyWith(connectError: null);
+    try {
+      await ref.read(gloveConnectionProvider).connect();
+    } catch (e) {
+      state = state.copyWith(
+        phase: GloveConnectionPhase.disconnected,
+        connectError: e is BlePermissionDeniedException
+            ? AppStrings.blePermissionDenied
+            : AppStrings.connectFailed,
+      );
+    } finally {
+      _explicitConnectInFlight = false;
+    }
   }
 
   /// Deliberate teardown: no "connection lost" banner, no auto-reconnect.
@@ -87,8 +112,9 @@ class GloveController extends Notifier<GloveState> {
   }
 
   void _onPhase(GloveConnectionPhase phase) {
-    final lost =
-        phase == GloveConnectionPhase.disconnected && !_manualDisconnect;
+    final lost = phase == GloveConnectionPhase.disconnected &&
+        !_manualDisconnect &&
+        !_explicitConnectInFlight;
     final restored = phase == GloveConnectionPhase.ready ||
         phase == GloveConnectionPhase.connecting ||
         phase == GloveConnectionPhase.discoveringServices;
@@ -96,7 +122,11 @@ class GloveController extends Notifier<GloveState> {
     if (restored) {
       // Link restored (or being restored): banner off, backoff reset.
       _attempt = 0;
-      state = state.copyWith(phase: phase, connectionLost: false);
+      state = state.copyWith(
+        phase: phase,
+        connectionLost: false,
+        connectError: null,
+      );
     } else if (lost) {
       _scheduleReconnect();
       state = state.copyWith(phase: phase, connectionLost: true);

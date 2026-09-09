@@ -22,6 +22,13 @@ class AppStrings {
   static const powerFault = 'Power fault';
   static const bleFault = 'BLE fault';
   static const gloveError = 'Glove error';
+  static const connectGlove = 'Connect glove';
+  static const blePermissionDenied =
+      'Bluetooth permissions were denied. Allow nearby devices and try '
+      'again (C-S1).';
+  static const connectFailed =
+      'Could not connect to the glove. Check that it is powered on and '
+      'nearby.';
 
   // Demo controls (dev-only)
   static const demoControlsTitle = 'Demo controls (mock glove)';

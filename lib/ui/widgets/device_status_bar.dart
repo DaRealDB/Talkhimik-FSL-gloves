@@ -15,6 +15,7 @@ class DeviceStatusBar extends ConsumerWidget {
   static const connectionLostBannerKey = Key('connection-lost-banner');
   static const batteryKey = Key('battery-indicator');
   static const errorChipKey = Key('glove-error-chip');
+  static const connectButtonKey = Key('connect-glove-button');
 
   static String _phaseLabel(GloveConnectionPhase phase) => switch (phase) {
         GloveConnectionPhase.disconnected => AppStrings.disconnected,
@@ -104,6 +105,26 @@ class DeviceStatusBar extends ConsumerWidget {
                   backgroundColor: scheme.errorContainer,
                   visualDensity: VisualDensity.compact,
                 ),
+              ),
+            // The real glove connects explicitly (C-S1); the mock
+            // auto-connects on the home screen.
+            if (!isMock && state.phase == GloveConnectionPhase.disconnected)
+              IconButton(
+                key: connectButtonKey,
+                tooltip: AppStrings.connectGlove,
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.bluetooth_searching),
+                onPressed: () async {
+                  await ref.read(gloveControllerProvider.notifier).connect();
+                  if (!context.mounted) return;
+                  final error =
+                      ref.read(gloveControllerProvider).connectError;
+                  if (error != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(error)),
+                    );
+                  }
+                },
               ),
           ],
         ),

@@ -1,4 +1,28 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- BLE permissions (SRS C-S1; flutter_blue_plus guidance).
+         Android 12+: runtime BLUETOOTH_SCAN + BLUETOOTH_CONNECT (requested
+         via permission_handler in ble_permissions.dart). neverForLocation:
+         the app derives no location from scans, so ACCESS_FINE_LOCATION is
+         only needed for the legacy (<= Android 11) path. -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <!-- The glove IS the product: no BLE means no app. -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
     <application
         android:label="talkhimik_app"
         android:name="${applicationName}"
