@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../core/constants/app_version.dart';
 import '../data/glove/glove_connection.dart';
@@ -10,6 +13,7 @@ import '../data/tts/tts_service.dart';
 import '../data/vocab/default_vocabulary_repository.dart';
 import '../domain/repositories/log_store.dart';
 import '../domain/repositories/vocabulary_repository.dart';
+import 'export_controller.dart';
 import 'glove_controller.dart';
 import 'settings_controller.dart';
 import 'transcript_controller.dart';
@@ -60,3 +64,14 @@ final transcriptControllerProvider =
 
 final settingsControllerProvider =
     NotifierProvider<SettingsController, SettingsState>(SettingsController.new);
+
+/// Where FR-16 CSVs are written; overridden with a temp dir in tests.
+final exportDirectoryProvider = Provider<Future<Directory>>((ref) async {
+  final docs = await getApplicationDocumentsDirectory();
+  final dir = Directory('${docs.path}/talkhimik_exports');
+  await dir.create(recursive: true);
+  return dir;
+});
+
+final exportControllerProvider =
+    NotifierProvider<ExportController, ExportState>(ExportController.new);

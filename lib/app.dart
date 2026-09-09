@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'core/strings/app_strings.dart';
 import 'core/theme/app_theme.dart';
+import 'ui/screens/export_screen.dart';
 import 'ui/screens/home_screen.dart';
 import 'ui/screens/settings_screen.dart';
 
@@ -20,6 +21,7 @@ class TalkhimikApp extends StatelessWidget {
       home: const HomeScreen(),
       routes: {
         '/settings': (_) => const SettingsScreen(),
+        '/export': (_) => const ExportScreen(),
       },
     );
   }

@@ -59,6 +59,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ref.read(transcriptControllerProvider.notifier).clear(),
           ),
           IconButton(
+            tooltip: 'Session logs',
+            icon: const Icon(Icons.file_download_outlined),
+            onPressed: () => Navigator.of(context).pushNamed('/export'),
+          ),
+          IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => Navigator.of(context).pushNamed('/settings'),
