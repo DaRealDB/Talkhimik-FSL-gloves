@@ -11,6 +11,7 @@ import '../data/vocab/default_vocabulary_repository.dart';
 import '../domain/repositories/log_store.dart';
 import '../domain/repositories/vocabulary_repository.dart';
 import 'glove_controller.dart';
+import 'settings_controller.dart';
 import 'transcript_controller.dart';
 import 'tts_controller.dart';
 
@@ -56,3 +57,6 @@ final ttsControllerProvider =
 final transcriptControllerProvider =
     NotifierProvider<TranscriptController, TranscriptState>(
         TranscriptController.new);
+
+final settingsControllerProvider =
+    NotifierProvider<SettingsController, SettingsState>(SettingsController.new);

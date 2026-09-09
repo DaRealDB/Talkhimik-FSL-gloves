@@ -5,7 +5,9 @@ import 'package:path_provider/path_provider.dart';
 
 import 'app.dart';
 import 'application/providers.dart';
+import 'data/glove/glove_connection_factory.dart';
 import 'data/storage/hive_log_store.dart';
+import 'data/storage/settings_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,9 +20,16 @@ Future<void> main() async {
   final logStore = HiveLogStore(Hive);
   await logStore.init();
 
+  // FR field-testing aid: the "Force mock" setting swaps the connection at
+  // startup (the real BLE client is Android-only anyway).
+  final settingsService = SharedPrefsSettingsService();
+  final forceMock = await settingsService.forceMock();
+  final glove = GloveConnectionFactory.create(forceMock: forceMock);
+
   final container = ProviderContainer(
     overrides: [
       logStoreProvider.overrideWithValue(logStore),
+      gloveConnectionProvider.overrideWithValue(glove),
     ],
   );
   runApp(UncontrolledProviderScope(container: container, child: const TalkhimikApp()));

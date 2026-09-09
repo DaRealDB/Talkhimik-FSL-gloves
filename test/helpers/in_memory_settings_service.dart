@@ -8,11 +8,11 @@ class InMemorySettingsService implements SettingsService {
   String language = 'fil';
   bool muted = false;
   String participant = '';
+  bool consent = false;
 
   double _rate = 1.0;
   String? _voice;
   bool _largeText = true;
-  bool _consent = false;
   DateTime? _consentAt;
   bool _forceMock = false;
   String? _demoScenario;
@@ -42,9 +42,9 @@ class InMemorySettingsService implements SettingsService {
   @override
   Future<void> setParticipantId(String value) async => participant = value;
   @override
-  Future<bool> consentGiven() async => _consent;
+  Future<bool> consentGiven() async => consent;
   @override
-  Future<void> setConsentGiven(bool value) async => _consent = value;
+  Future<void> setConsentGiven(bool value) async => consent = value;
   @override
   Future<DateTime?> consentDate() async => _consentAt;
   @override

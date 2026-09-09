@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/glove/mock_glove_connection.dart';
 import '../widgets/demo_controls.dart';
 import '../widgets/device_status_bar.dart';
 import '../widgets/reply_panel.dart';
@@ -23,11 +24,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     // Demo convenience: on dev platforms the mock glove auto-connects so
-    // the transcript is one tap away. The real glove requires a permission
-    // flow (C-S1) and connects explicitly.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (ref.read(gloveIsMockProvider)) {
-        ref.read(gloveControllerProvider.notifier).connect();
+    // the transcript is one tap away; a saved startup scenario then starts
+    // running. The real glove requires a permission flow (C-S1) and
+    // connects explicitly.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!ref.read(gloveIsMockProvider)) return;
+      final gloveController = ref.read(gloveControllerProvider.notifier);
+      await gloveController.connect();
+      if (!mounted) return;
+      final scenarioName =
+          await ref.read(settingsServiceProvider).demoScenario();
+      if (scenarioName == null || !mounted) return;
+      final glove = ref.read(gloveConnectionProvider);
+      if (glove is MockGloveConnection) {
+        final scenario = MockScenario.values
+            .where((s) => s.name == scenarioName)
+            .firstOrNull;
+        if (scenario != null) glove.startScenario(scenario);
       }
     });
   }
@@ -44,6 +57,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: const Icon(Icons.delete_sweep_outlined),
             onPressed: () =>
                 ref.read(transcriptControllerProvider.notifier).clear(),
+          ),
+          IconButton(
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).pushNamed('/settings'),
           ),
         ],
       ),

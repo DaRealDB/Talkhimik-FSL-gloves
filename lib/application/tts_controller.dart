@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/tts/tts_service.dart';
 import 'providers.dart';
 
 /// TTS configuration (SRS FR-2, FR-15).
@@ -9,6 +10,7 @@ class TtsState {
     this.language = 'fil',
     this.rate = 1.0,
     this.voice,
+    this.voices = const [],
     this.initialized = false,
   });
 
@@ -16,6 +18,10 @@ class TtsState {
   final String language; // 'fil' | 'en' (mirrors the output language setting)
   final double rate;
   final String? voice;
+
+  /// Voices the platform engine offers for the current language (FR-15).
+  final List<TtsVoice> voices;
+
   final bool initialized;
 
   TtsState copyWith({
@@ -23,6 +29,7 @@ class TtsState {
     String? language,
     double? rate,
     String? voice,
+    List<TtsVoice>? voices,
     bool? initialized,
   }) =>
       TtsState(
@@ -30,6 +37,7 @@ class TtsState {
         language: language ?? this.language,
         rate: rate ?? this.rate,
         voice: voice ?? this.voice,
+        voices: voices ?? this.voices,
         initialized: initialized ?? this.initialized,
       );
 }
@@ -57,6 +65,7 @@ class TtsController extends Notifier<TtsState> {
       language: language,
       rate: rate,
       voice: voice,
+      voices: await service.getVoices(_engineTag(language)),
       muted: muted,
       initialized: true,
     );
@@ -81,7 +90,10 @@ class TtsController extends Notifier<TtsState> {
     final service = ref.read(ttsServiceProvider);
     await service.setLanguage(_engineTag(language));
     await ref.read(settingsServiceProvider).setOutputLanguage(language);
-    state = state.copyWith(language: language);
+    state = state.copyWith(
+      language: language,
+      voices: await service.getVoices(_engineTag(language)),
+    );
   }
 
   Future<void> setRate(double rate) async {

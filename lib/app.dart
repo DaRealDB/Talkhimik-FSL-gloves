@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'core/strings/app_strings.dart';
 import 'core/theme/app_theme.dart';
 import 'ui/screens/home_screen.dart';
+import 'ui/screens/settings_screen.dart';
 
 class TalkhimikApp extends StatelessWidget {
   const TalkhimikApp({super.key});
@@ -17,6 +18,9 @@ class TalkhimikApp extends StatelessWidget {
       themeMode: ThemeMode.dark,
       debugShowCheckedModeBanner: false,
       home: const HomeScreen(),
+      routes: {
+        '/settings': (_) => const SettingsScreen(),
+      },
     );
   }
 }
