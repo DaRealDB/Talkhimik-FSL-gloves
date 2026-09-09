@@ -62,6 +62,26 @@ class GestureLogEntry {
 
   /// Model version from the FR-14 registry; "n/a" until Firebase exists.
   final String modelVersion;
+
+  /// Copy with the Hive key attached after insertion.
+  GestureLogEntry withId(int newId) => GestureLogEntry(
+        id: newId,
+        participantId: participantId,
+        sessionId: sessionId,
+        wordId: wordId,
+        filipinoText: filipinoText,
+        englishText: englishText,
+        confidence: confidence,
+        confidenceLevel: confidenceLevel,
+        latencyMs: latencyMs,
+        gloveTimestampMs: gloveTimestampMs,
+        receivedAt: receivedAt,
+        corrected: corrected,
+        originalWordId: originalWordId,
+        source: source,
+        appVersion: appVersion,
+        modelVersion: modelVersion,
+      );
 }
 
 /// One entry of the offline sync queue (SRS FR-10, C-S4).
@@ -80,6 +100,21 @@ class SyncQueueEntry {
   final int? id;
   final int logEntryId;
   final DateTime createdAt;
+}
+
+/// Header row for a logging session (SRS FR-10; drives the FR-16 export
+/// listing).
+@immutable
+class SessionMeta {
+  const SessionMeta({
+    required this.sessionId,
+    required this.participantId,
+    required this.startedAt,
+  });
+
+  final String sessionId;
+  final String participantId;
+  final DateTime startedAt;
 }
 
 /// Session id helper: "S-yyyyMMdd-HHmmss" (SRS FR-10 session field).
