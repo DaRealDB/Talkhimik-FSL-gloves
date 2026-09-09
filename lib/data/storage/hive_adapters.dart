@@ -9,9 +9,7 @@ import '../../domain/models/participant.dart';
 /// If a field is added or removed, bump that adapter's [TypeAdapter.version]
 /// and add a migration note in the commit message (plan risk #8).
 class GestureLogEntryAdapter extends TypeAdapter<GestureLogEntry> {
-  @override
   final int typeId = 1;
-  @override
   final int version = 1;
 
   @override
@@ -58,9 +56,7 @@ class GestureLogEntryAdapter extends TypeAdapter<GestureLogEntry> {
 }
 
 class SyncQueueEntryAdapter extends TypeAdapter<SyncQueueEntry> {
-  @override
   final int typeId = 2;
-  @override
   final int version = 1;
 
   @override
@@ -80,9 +76,7 @@ class SyncQueueEntryAdapter extends TypeAdapter<SyncQueueEntry> {
 }
 
 class ParticipantProfileAdapter extends TypeAdapter<ParticipantProfile> {
-  @override
   final int typeId = 3;
-  @override
   final int version = 1;
 
   @override
@@ -107,9 +101,7 @@ class ParticipantProfileAdapter extends TypeAdapter<ParticipantProfile> {
 }
 
 class SessionMetaAdapter extends TypeAdapter<SessionMeta> {
-  @override
   final int typeId = 4;
-  @override
   final int version = 1;
 
   @override

@@ -81,7 +81,7 @@ class HiveLogStore implements LogStore {
 
   @override
   Future<ParticipantProfile?> getParticipant(String id) async =>
-      await _participants.get(id);
+      _participants.get(id);
 
   @override
   Future<List<ParticipantProfile>> allParticipants() async =>
