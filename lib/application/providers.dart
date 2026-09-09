@@ -1,13 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/constants/app_version.dart';
 import '../data/glove/glove_connection.dart';
 import '../data/glove/glove_connection_factory.dart';
 import '../data/glove/mock_glove_connection.dart';
 import '../data/storage/settings_service.dart';
+import '../data/tts/flutter_tts_service.dart';
+import '../data/tts/tts_service.dart';
 import '../data/vocab/default_vocabulary_repository.dart';
 import '../domain/repositories/log_store.dart';
 import '../domain/repositories/vocabulary_repository.dart';
 import 'glove_controller.dart';
+import 'transcript_controller.dart';
+import 'tts_controller.dart';
 
 /// Composition root — every provider in one panel-readable file.
 /// Layer rule: ui → application → domain ← data.
@@ -40,3 +45,14 @@ final gloveIsMockProvider = Provider<bool>(
 
 final gloveControllerProvider =
     NotifierProvider<GloveController, GloveState>(GloveController.new);
+
+final appVersionProvider = Provider<String>((ref) => kAppVersion);
+
+final ttsServiceProvider = Provider<TtsService>((ref) => FlutterTtsService());
+
+final ttsControllerProvider =
+    NotifierProvider<TtsController, TtsState>(TtsController.new);
+
+final transcriptControllerProvider =
+    NotifierProvider<TranscriptController, TranscriptState>(
+        TranscriptController.new);

@@ -31,4 +31,14 @@ class AppStrings {
   static const connect = 'Connect';
   static const disconnect = 'Disconnect';
   static const commandPrefix = 'Send:';
+
+  // Transcript (FR-1, FR-3)
+  static const emptyTranscript =
+      'Sign a letter or phrase to begin.\n\nRecognized gestures appear here '
+      'as text and speech.';
+  static const clearTranscript = 'Clear transcript';
+
+  // Reply panel (FR-7)
+  static const replyHint = 'Type a reply for the signer…';
+  static const sendReply = 'Send reply';
 }
