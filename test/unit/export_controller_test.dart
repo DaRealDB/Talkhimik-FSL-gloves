@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talkhimik_app/application/export_controller.dart';
+
 import 'package:talkhimik_app/application/providers.dart';
 import 'package:talkhimik_app/domain/models/log_entry.dart';
 

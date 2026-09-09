@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../application/export_controller.dart';
 import '../../application/providers.dart';
 
 /// FR-16: sessions grouped by participant, with per-session CSV export and
@@ -35,7 +34,7 @@ class ExportScreen extends ConsumerWidget {
                 for (final summary in state.summaries)
                   Card(
                     child: ListTile(
-                      title: Text('${summary.session.sessionId}'),
+                      title: Text(summary.session.sessionId),
                       subtitle: Text(
                         'Participant ${summary.session.participantId} · '
                         '${summary.eventCount} events · '
