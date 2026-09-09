@@ -46,9 +46,10 @@ void main() {
     glove.emitGesture(wordId: 5, confidence: 45); // E
     await tester.pumpAndSettle();
 
-    // FR-1: bubbles in arrival order with the Filipino text.
+    // FR-1: bubbles in arrival order with the Filipino text. ('Kumusta'
+    // also appears once as a saved-phrase chip, hence findsWidgets.)
     expect(find.text('A'), findsOneWidget);
-    expect(find.text('Kumusta'), findsOneWidget);
+    expect(find.text('Kumusta'), findsWidgets);
     expect(find.text('E'), findsOneWidget);
 
     // FR-2: TTS spoke each accepted result.
