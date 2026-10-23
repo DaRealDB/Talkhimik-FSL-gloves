@@ -3,6 +3,29 @@
 Talkhimik companion app — FSL smart glove (Team Sagbotics, CIT-U).
 Flutter, Android-tested (NFR-10).
 
+## Getting started
+
+Requires the [Flutter SDK](https://docs.flutter.dev/get-started/install)
+(Dart `^3.13.2`) and an Android toolchain.
+
+```
+git clone https://github.com/DaRealDB/Talkhimik-FSL-gloves.git
+cd Talkhimik-FSL-gloves
+flutter pub get
+flutter run        # device or emulator; BLE needs a physical phone
+```
+
+To get the installable app instead of running from source:
+
+```
+flutter build apk --release
+```
+
+The APK lands at
+`build/app/outputs/flutter-apk/app-release.apk` — copy it to a phone and
+install (allow "install unknown apps"), or `flutter install` with the
+device connected.
+
 ## Structure
 
 - `lib/domain` — models, vocabulary table, repository interfaces
