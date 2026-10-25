@@ -140,13 +140,17 @@ class TalkhimikTokens extends ThemeExtension<TalkhimikTokens> {
 }
 
 /// App-specific text styles (typography pass): the product's main text
-/// (transcriptWord) is the largest, most legible style; live numbers use
+/// (transcriptHero) is the largest, most legible style; live numbers use
 /// tabular figures so digits never jitter.
 @immutable
 class TalkhimikText extends ThemeExtension<TalkhimikText> {
   const TalkhimikText({
     required this.bandTitle,
     required this.transcriptWord,
+    required this.transcriptHero,
+    required this.transcriptHistory,
+    required this.transcriptHistoryOld,
+    required this.display,
     required this.metric,
     required this.id,
     required this.caption,
@@ -155,7 +159,21 @@ class TalkhimikText extends ThemeExtension<TalkhimikText> {
   });
 
   final TextStyle? bandTitle;
+
+  /// Standard signed-bubble word.
   final TextStyle? transcriptWord;
+
+  /// HERO: the latest recognized sign — the largest text in the app
+  /// (40–56 sp mobile), leading ~1.05, display weight.
+  final TextStyle? transcriptHero;
+
+  /// Earlier signs step down in size and opacity (100 → 70 → 50 %).
+  final TextStyle? transcriptHistory;
+  final TextStyle? transcriptHistoryOld;
+
+  /// Display for calibration prompts and success states.
+  final TextStyle? display;
+
   final TextStyle? metric;
   final TextStyle? id;
   final TextStyle? caption;
@@ -167,6 +185,10 @@ class TalkhimikText extends ThemeExtension<TalkhimikText> {
   static const fallback = TalkhimikText(
     bandTitle: TextStyle(fontWeight: FontWeight.w700),
     transcriptWord: TextStyle(fontWeight: FontWeight.w600),
+    transcriptHero: TextStyle(fontWeight: FontWeight.w700),
+    transcriptHistory: TextStyle(fontWeight: FontWeight.w600),
+    transcriptHistoryOld: TextStyle(fontWeight: FontWeight.w500),
+    display: TextStyle(fontWeight: FontWeight.w700),
     metric: TextStyle(),
     id: TextStyle(),
     caption: TextStyle(),
@@ -181,6 +203,10 @@ class TalkhimikText extends ThemeExtension<TalkhimikText> {
   TalkhimikText copyWith({
     TextStyle? bandTitle,
     TextStyle? transcriptWord,
+    TextStyle? transcriptHero,
+    TextStyle? transcriptHistory,
+    TextStyle? transcriptHistoryOld,
+    TextStyle? display,
     TextStyle? metric,
     TextStyle? id,
     TextStyle? caption,
@@ -190,6 +216,11 @@ class TalkhimikText extends ThemeExtension<TalkhimikText> {
       TalkhimikText(
         bandTitle: bandTitle ?? this.bandTitle,
         transcriptWord: transcriptWord ?? this.transcriptWord,
+        transcriptHero: transcriptHero ?? this.transcriptHero,
+        transcriptHistory: transcriptHistory ?? this.transcriptHistory,
+        transcriptHistoryOld:
+            transcriptHistoryOld ?? this.transcriptHistoryOld,
+        display: display ?? this.display,
         metric: metric ?? this.metric,
         id: id ?? this.id,
         caption: caption ?? this.caption,
@@ -204,6 +235,13 @@ class TalkhimikText extends ThemeExtension<TalkhimikText> {
       bandTitle: TextStyle.lerp(bandTitle, other.bandTitle, t),
       transcriptWord:
           TextStyle.lerp(transcriptWord, other.transcriptWord, t),
+      transcriptHero:
+          TextStyle.lerp(transcriptHero, other.transcriptHero, t),
+      transcriptHistory:
+          TextStyle.lerp(transcriptHistory, other.transcriptHistory, t),
+      transcriptHistoryOld: TextStyle.lerp(
+          transcriptHistoryOld, other.transcriptHistoryOld, t),
+      display: TextStyle.lerp(display, other.display, t),
       metric: TextStyle.lerp(metric, other.metric, t),
       id: TextStyle.lerp(id, other.id, t),
       caption: TextStyle.lerp(caption, other.caption, t),
@@ -217,31 +255,52 @@ class TalkhimikText extends ThemeExtension<TalkhimikText> {
 /// accessibility text scale is applied by MediaQuery, never by shrinking
 /// these values.
 TextTheme _buildTextTheme(Color onSurface) => const TextTheme(
-      displaySmall: TextStyle(fontSize: 36, fontWeight: FontWeight.w600, height: 44 / 36, letterSpacing: -0.5),
-      headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, height: 36 / 28),
-      headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, height: 32 / 24),
-      titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, height: 28 / 22),
-      titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, height: 24 / 16, letterSpacing: 0.15),
-      titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 20 / 14, letterSpacing: 0.1),
-      bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, height: 24 / 16, letterSpacing: 0.5),
+      displaySmall: TextStyle(fontSize: 36, fontWeight: FontWeight.w700, height: 44 / 36, letterSpacing: -0.5),
+      headlineMedium: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, height: 40 / 32),
+      headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, height: 32 / 24),
+      titleLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, height: 32 / 24),
+      titleMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, height: 28 / 20, letterSpacing: 0.1),
+      titleSmall: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, height: 22 / 16, letterSpacing: 0.1),
+      bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, height: 24 / 16, letterSpacing: 0.25),
       bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, height: 20 / 14, letterSpacing: 0.25),
       bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, height: 16 / 12, letterSpacing: 0.4),
-      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 20 / 14, letterSpacing: 0.1),
-      labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, height: 16 / 12, letterSpacing: 0.5),
-      labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, height: 16 / 11, letterSpacing: 0.5),
+      labelLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, height: 20 / 16, letterSpacing: 0.1),
+      labelMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 16 / 14, letterSpacing: 0.25),
+      labelSmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, height: 16 / 12, letterSpacing: 0.25),
     );
 
 TalkhimikText _buildTalkhimikText() => const TalkhimikText(
       bandTitle: TextStyle(
-          fontSize: 16,
+          fontSize: 18,
           fontWeight: FontWeight.w700,
-          height: 20 / 16,
-          letterSpacing: 0.15),
+          height: 22 / 18,
+          letterSpacing: 0.1),
       transcriptWord: TextStyle(
-          fontSize: 32,
+          fontSize: 24,
           fontWeight: FontWeight.w600,
-          height: 40 / 32,
+          height: 30 / 24,
           letterSpacing: -0.25),
+      // HERO: the latest recognized sign (40–56 sp mobile, leading ~1.05).
+      transcriptHero: TextStyle(
+          fontSize: 44,
+          fontWeight: FontWeight.w700,
+          height: 46 / 44,
+          letterSpacing: -0.5),
+      transcriptHistory: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          height: 30 / 24,
+          letterSpacing: -0.25),
+      transcriptHistoryOld: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w500,
+          height: 24 / 18,
+          letterSpacing: -0.15),
+      display: TextStyle(
+          fontSize: 44,
+          fontWeight: FontWeight.w700,
+          height: 46 / 44,
+          letterSpacing: -0.5),
       metric: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -253,8 +312,8 @@ TalkhimikText _buildTalkhimikText() => const TalkhimikText(
           height: 18 / 13,
           fontFeatures: [FontFeature.tabularFigures()]),
       caption: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, height: 16 / 12),
-      chip: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, height: 16 / 11),
-      badge: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, height: 16 / 11),
+      chip: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, height: 16 / 12),
+      badge: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, height: 16 / 12),
     );
 
 ThemeData buildLightTheme() {
