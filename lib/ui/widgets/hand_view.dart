@@ -229,6 +229,20 @@ class HandPainter extends CustomPainter {
     return tips;
   }
 
+  /// 4-stop finger gradient (0° → 90°): pale sky tint → sky → azure →
+  /// navy, echoing the slab palette (step 5 re-skin).
+  static Color fingerColorFor(double flex) {
+    const stops = [
+      AppColors.fingerLow,
+      AppColors.sky,
+      AppColors.azure,
+      AppColors.navy,
+    ];
+    final t = (flex / 90).clamp(0.0, 1.0) * (stops.length - 1);
+    final i = t.floor().clamp(0, stops.length - 2);
+    return Color.lerp(stops[i], stops[i + 1], t - i)!;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height * 0.55);
@@ -292,9 +306,8 @@ class HandPainter extends CustomPainter {
       final segments = i == 0 ? 2 : 3;
       var angle = _baseAngles[i] * math.pi / 180;
       var point = Offset(0, -palmRadius * 0.7);
-      // Fill gradient: neutral at low bend → lime at full flexion.
-      final fillColor =
-          Color.lerp(tokens.fingerLow, tokens.fingerHigh, flex / 90)!;
+      // 4-stop gradient fill: pale tint → sky → azure → navy with bend.
+      final fillColor = fingerColorFor(flex);
       final fill = Paint()
         ..strokeWidth = 14
         ..strokeCap = StrokeCap.round
@@ -306,11 +319,48 @@ class HandPainter extends CustomPainter {
         final end =
             point + Offset(math.sin(angle) * len, -math.cos(angle) * len);
         canvas.drawLine(point, end, invalid ? outline : fill);
+        // Faceted joint: the fold-shadow gradient along the hinge
+        // direction (the logo's slab fold language).
+        if (!invalid && j < segments - 1) {
+          final dir = (end - point) / end.distance;
+          final fold = Paint()
+            ..strokeWidth = 6
+            ..strokeCap = StrokeCap.round
+            ..shader = const LinearGradient(
+              colors: [AppColors.fold, Color(0x00013A6B)],
+            ).createShader(Rect.fromPoints(point - dir * 8, point + dir * 2));
+          canvas.drawLine(point - dir * 8, point + dir * 2, fold);
+        }
         point = end;
       }
     }
 
     canvas.restore();
+
+    // Soft sky glow on the most-flexed finger (state cue), drawn outside
+    // the mirror transform.
+    var maxFlex = -1.0;
+    var maxIndex = -1;
+    for (var i = 0; i < 5; i++) {
+      if (pose.fingerDeg[i] > maxFlex) {
+        maxFlex = pose.fingerDeg[i];
+        maxIndex = i;
+      }
+    }
+    if (maxIndex >= 0 && maxFlex > 60 && !uncalibrated) {
+      var glowTip = tips[maxIndex];
+      if (left) glowTip = Offset(size.width - glowTip.dx, glowTip.dy);
+      final glow = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            AppColors.sky.withValues(alpha: 0.45),
+            AppColors.sky.withValues(alpha: 0),
+          ],
+        ).createShader(
+            Rect.fromCircle(center: glowTip, radius: palmRadius * 1.1))
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+      canvas.drawCircle(glowTip, palmRadius * 1.1, glow);
+    }
 
     // Badges: drawn outside the mirror transform so text stays readable.
     if (!compact) {

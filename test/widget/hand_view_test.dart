@@ -77,6 +77,24 @@ void main() {
     expect(painter.uncalibrated, isTrue);
     expect(painter.tokens.header, AppColors.sky);
   });
+  test('fingerColorFor walks the 4-stop gradient (step 5 re-skin)', () {
+    expect(HandPainter.fingerColorFor(0), AppColors.fingerLow);
+    expect(HandPainter.fingerColorFor(90), AppColors.navy);
+    final mid = HandPainter.fingerColorFor(45);
+    // 45° sits between sky and azure (stops 1 and 2 of 3 segments).
+    expect(mid, isNot(AppColors.fingerLow));
+    expect(mid, isNot(AppColors.navy));
+  });
+
+  test('compact painters carry the compact flag (Home preview mode)', () {
+    final painter = HandPainter(
+      pose: pose(),
+      tokens: TalkhimikTokens.light,
+      text: TalkhimikText.fallback,
+      compact: true,
+    );
+    expect(painter.compact, isTrue);
+  });
 }
 
 extension on HandPose {
