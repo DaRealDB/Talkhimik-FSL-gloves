@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -69,7 +70,13 @@ final settingsControllerProvider =
     NotifierProvider<SettingsController, SettingsState>(SettingsController.new);
 
 /// Where FR-16 CSVs are written; overridden with a temp dir in tests.
+/// Desktop/Android only — path_provider and dart:io have no web
+/// implementation, so export fails fast there instead of throwing
+/// MissingPluginException.
 final exportDirectoryProvider = Provider<Future<Directory>>((ref) async {
+  if (kIsWeb) {
+    throw UnsupportedError('CSV export is desktop/Android only');
+  }
   final docs = await getApplicationDocumentsDirectory();
   final dir = Directory('${docs.path}/talkhimik_exports');
   await dir.create(recursive: true);

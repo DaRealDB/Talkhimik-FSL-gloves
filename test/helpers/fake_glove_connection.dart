@@ -1,14 +1,18 @@
 import 'dart:async';
 
 import 'package:talkhimik_app/data/glove/glove_connection.dart';
+import 'package:talkhimik_app/domain/models/cal_info_packet.dart';
 import 'package:talkhimik_app/domain/models/device_status.dart';
 import 'package:talkhimik_app/domain/models/gesture_result.dart';
+import 'package:talkhimik_app/domain/models/telemetry_packet.dart';
 
 /// Controllable [GloveConnection] for tests: streams you drive by hand and
 /// call counters for the reconnect state machine.
 class FakeGloveConnection implements GloveConnection {
   final gestures = StreamController<GestureResultPacket>.broadcast();
+  final telemetryController = StreamController<TelemetryPacket>.broadcast();
   final status = StreamController<DeviceStatusPacket>.broadcast();
+  final calInfoController = StreamController<CalInfoPacket>.broadcast();
   final phases = StreamController<GloveConnectionPhase>.broadcast();
 
   int connectCalls = 0;
@@ -28,7 +32,13 @@ class FakeGloveConnection implements GloveConnection {
   Stream<GestureResultPacket> get gestureResults => gestures.stream;
 
   @override
+  Stream<TelemetryPacket> get telemetry => telemetryController.stream;
+
+  @override
   Stream<DeviceStatusPacket> get deviceStatus => status.stream;
+
+  @override
+  Stream<CalInfoPacket> get calInfo => calInfoController.stream;
 
   @override
   Stream<GloveConnectionPhase> get phaseChanges => phases.stream;
@@ -49,7 +59,7 @@ class FakeGloveConnection implements GloveConnection {
   }
 
   @override
-  Future<void> sendCommand(AppCommand command) async {
+  Future<void> sendCommand(AppCommand command, {int value = 0}) async {
     commands.add(command);
   }
 
@@ -62,12 +72,18 @@ class FakeGloveConnection implements GloveConnection {
 
   void emitStatus(DeviceStatusPacket packet) => status.add(packet);
 
+  void emitTelemetry(TelemetryPacket packet) => telemetryController.add(packet);
+
+  void emitCalInfo(CalInfoPacket packet) => calInfoController.add(packet);
+
   void emitGesture(GestureResultPacket packet) => gestures.add(packet);
 
   @override
   void dispose() {
     gestures.close();
+    telemetryController.close();
     status.close();
+    calInfoController.close();
     phases.close();
   }
 }

@@ -8,20 +8,29 @@ rationale). SRS codes: C-F4/C-F5/C-F7, C-S1, C-S5, NFR-9, Table III-1/III-2.
 ## Stage A — Firmware validation with nRF Connect (no app code involved)
 
 > Isolates firmware bugs from app bugs (Steps doc, stage 1–2).
+> The app now implements the firmware contract (Code Reference §5), so these
+> checks validate the contract the app speaks.
 
-- [ ] A.1 Glove advertises: nRF Connect shows device name **Talkhimik-Glove**
-      and service `4fafc201-1fb5-459e-8fcc-c5c9c331914b`.
-- [ ] A.2 Connect from nRF Connect; discover the **three characteristics**
-      (Gesture Result `…9d42` NOTIFY, Device Status `…9d43` READ+NOTIFY,
-      App Command `…9d44` WRITE) — SRS Table III-1.
-- [ ] A.3 Subscribe to Gesture Result; a test gesture produces a **7-byte
-      packet** (word_id u16 + confidence u8 + timestamp_ms u32, LE) — Table III-2.
-- [ ] A.4 Subscribe/read Device Status; payload is **3 bytes** (battery, mode,
-      error) matching `device_status_codec.dart` — confirm or update the
-      codec with the firmware team (SRS open item 2).
-- [ ] A.5 Write command bytes to App Command; firmware reacts to
-      start/stop-stream, calibrate, sleep, query-status (C-F5).
-- [ ] A.6 Power-cycle the glove: after reconnect it resumes with **no stored
+- [ ] A.1 Glove advertises: nRF Connect shows device name **TALKHIMIK-L/R**
+      and service `d84f9c2e-6b1a-4e57-9f3d-2a8c7e5b1f04`.
+- [ ] A.2 Connect from nRF Connect; discover the **four characteristics**
+      (Telemetry `7a3e…` READ+NOTIFY, Command `3f8d…` WRITE+WRITE-NO-RESPONSE,
+      Device Status `c2b6…` READ+NOTIFY, CAL_INFO `a1f2…` READ+NOTIFY) —
+      Code Reference §5.1.
+- [ ] A.3 Subscribe to Telemetry; a bend produces **29-byte frames** at
+      ~50 ms (u8 hand · u16 seq · u8 angles[5] · i16 roll/pitch/yaw ×10 ·
+      u16 raw ADC[5] · u32 calibration_id · u8 quality, LE) — §5.2,
+      `telemetry_packet_codec.dart`.
+- [ ] A.4 Subscribe/read Device Status; payload is **5 bytes** (mode,
+      calibration step, battery %, flags, error) matching
+      `device_status_codec.dart` — §5.3.
+- [ ] A.5 Write command bytes to Command; firmware reacts to
+      START_CALIBRATION, CAPTURE_FLAT/90, CANCEL, SET_RATE, ZERO_YAW,
+      SET_HAND, VIBRATE (opcodes 0x01–0x08) — §5.4, `AppCommand`.
+- [ ] A.6 Read CAL_INFO: **104-byte** table with valid/weak masks,
+      calibration_id, per-finger baselines, R_DIV, firmware version —
+      §5.5, `cal_info_codec.dart`.
+- [ ] A.7 Power-cycle the glove: after reconnect it resumes with **no stored
       state** (C-F7).
 
 ## Stage B — App static checks (no device needed)
@@ -42,13 +51,17 @@ rationale). SRS codes: C-F4/C-F5/C-F7, C-S1, C-S5, NFR-9, Table III-1/III-2.
       crash.
 - [ ] C.2 Status bar shows **Scanning… → Connecting… → Discovering
       services… → Connected** and the glove name "Talkhimik Glove".
-- [ ] C.3 Battery % and mode appear from the Device Status characteristic.
-- [ ] C.4 A test gesture on the glove → transcript bubble (FR-1) + TTS
-      (FR-2) + a log row (FR-10) within the **≤ 500 ms** NFR-1 target
-      (stopwatch it).
-- [ ] C.5 Low-confidence gesture shows an amber/red badge (FR-4).
-- [ ] C.6 Calibration and Record mode send `calibrate`/`startStream`/
-      `stopStream` command bytes; the glove's mode flips accordingly.
+- [ ] C.3 Battery % and mode appear from the Device Status characteristic;
+      an uncalibrated glove shows the **Uncalibrated** chip.
+- [ ] C.4 Telemetry frames flow into `GloveState` (angles/IMU/raw ADC) and
+      CAL_INFO shows the firmware version. Note: the glove does not emit
+      word labels yet, so the transcript stays mock-driven until the label
+      packet (open item below) — C.4's gesture→bubble check is blocked on it.
+- [ ] C.5 Low-confidence gesture shows an amber/red badge (FR-4) — mock
+      path until the label packet exists.
+- [ ] C.6 Calibration and Record mode send `startCalibration` /
+      `cancelCalibration` / `setRate(50)` command bytes; the glove's mode
+      flips accordingly.
 - [ ] C.7 Power off the glove mid-session: the **"connection lost" banner**
       appears within 3 s (C-S5, NFR-9) and auto-reconnect retries with
       backoff 1→2→4→8→30 s.
@@ -65,11 +78,14 @@ rationale). SRS codes: C-F4/C-F5/C-F7, C-S1, C-S5, NFR-9, Table III-1/III-2.
       scenarios still work end-to-end.
 - [ ] D.2 Full test suite green after any Stage C fix.
 
-## Open items to close with the firmware team (SRS open item 2)
+## Open items to close with the firmware team
 
-- [ ] Final UUID values for service + three characteristics.
-- [ ] Device Status byte layout confirmed against `device_status_codec.dart`.
-- [ ] Calibration packet contract (FR-8 shell note in
-      `calibration_controller.dart`).
+- [ ] Production label packet: the 7-byte gesture result contract
+      (`gesture_packet_codec.dart`, SRS Table III-2) vs. the raw telemetry
+      stream — until the firmware sends labels (or the app classifies),
+      the transcript works only with the mock glove.
+- [ ] Calibration packet contract (FR-8): driving the firmware wizard steps
+      (STATUS.calibrationStep → CAPTURE_FLAT/CAPTURE_90) from the app's
+      calibration flow — see `calibration_controller.dart`.
 - [ ] Raw sensor stream contract for FR-9 (labeled streams vs. labeled
       result packets — see `data_collection_controller.dart`).

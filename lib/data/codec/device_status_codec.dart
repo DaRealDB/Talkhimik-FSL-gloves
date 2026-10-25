@@ -1,44 +1,43 @@
 import 'dart:typed_data';
 
+import '../../core/constants/gatt_ids.dart';
 import '../../domain/models/device_status.dart';
 
-/// Strict little-endian decoder for the 3-byte Device Status payload
-/// (SRS Table III-1: battery %, active mode, last error code).
-///
-/// Byte layout is NOT pinned by the SRS (open item 2, like the UUIDs) and
-/// must be finalized with the firmware team before firmware freeze:
-///   [0] battery percent u8 (0–100)
-///   [1] mode u8 — 0 idle, 1 streaming, 2 calibrating, 3 sleeping
-///   [2] last error code u8 — GloveErrorCode values (0 = none)
+/// Strict decoder for the firmware's 5-byte Device Status payload
+/// (Code Reference §5.3, every 250 ms):
+///   [0] mode u8 — 0 streaming, 1 calibrating
+///   [1] calibration step u8 — 0 idle, 1–10 = thumb-flat … pinky-90
+///   [2] battery % u8 — 0xFF = unknown
+///   [3] flags u8 — bit0 = uncalibrated (placeholder angles in use)
+///   [4] error u8 — GloveErrorCode values (0 = none)
 class DeviceStatusCodec {
   DeviceStatusCodec._();
 
-  static const int packetLength = 3;
-
   /// Decodes one READ/NOTIFY payload. Throws [FormatException] when the
-  /// payload is not exactly 3 bytes.
+  /// payload is not exactly [GattIds.statusPacketLength] bytes.
   static DeviceStatusPacket decode(Uint8List bytes) {
-    if (bytes.length != packetLength) {
+    if (bytes.length != GattIds.statusPacketLength) {
       throw FormatException(
-        'Device status packet must be $packetLength bytes '
-        '(battery u8 + mode u8 + error u8), got ${bytes.length}',
+        'Device status packet must be ${GattIds.statusPacketLength} bytes '
+        '(Code Reference §5.3), got ${bytes.length}',
       );
     }
 
+    final battery = bytes[2];
     return DeviceStatusPacket(
-      batteryPercent: bytes[0].clamp(0, 100),
-      mode: _modeFromCode(bytes[1]),
+      mode: _modeFromCode(bytes[0]),
+      calibrationStep: bytes[1],
+      batteryPercent: battery == 0xFF ? null : battery.clamp(0, 100),
+      uncalibrated: bytes[3] & 0x01 != 0,
       // A packet received over the live link implies the link is up.
       linkUp: true,
-      lastErrorCode: bytes[2],
+      lastErrorCode: bytes[4],
     );
   }
 
   static GloveMode _modeFromCode(int code) => switch (code) {
-        0 => GloveMode.idle,
-        1 => GloveMode.streaming,
-        2 => GloveMode.calibrating,
-        3 => GloveMode.sleeping,
+        0 => GloveMode.streaming,
+        1 => GloveMode.calibrating,
         _ => GloveMode.unknown,
       };
 }

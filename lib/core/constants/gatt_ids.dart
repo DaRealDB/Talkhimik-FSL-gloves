@@ -1,32 +1,52 @@
 /// GATT contract constants shared between the glove firmware (ESP32-S3,
-/// NimBLE) and this app. Source: SRS Section III, Table III-1.
+/// NimBLE) and this app.
 ///
-/// The UUIDs below are the example values from the SRS and must be finalized
-/// together with the firmware team before firmware freeze (SRS open item 2).
+/// Live contract: the as-built firmware — `TALKHIMIK_Code_Reference.md` §5
+/// (`talkhimik-ble/firmware/glove-esp32/config.h`), mirrored by the web
+/// dashboard. The app consumes TELEMETRY / STATUS / CAL_INFO and writes
+/// COMMAND opcodes.
+///
+/// Planned contract: once on-glove TFLM inference ships, the glove will also
+/// emit production label packets (SRS Table III-2 — see
+/// [gesturePacketLength] and `gesture_packet_codec.dart`), which the mock
+/// glove already models today.
 library;
 
 class GattIds {
   GattIds._();
 
-  /// Advertised device name of the glove.
-  static const String deviceName = 'Talkhimik-Glove';
+  /// Advertised device name prefix: `TALKHIMIK-L` / `TALKHIMIK-R` (the hand
+  /// suffix comes from the build-time HAND constant / NVS).
+  static const String deviceNamePrefix = 'TALKHIMIK';
 
-  /// Talkhimik Glove Service — container for the three characteristics.
-  static const String gloveService = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+  /// Talkhimik Glove Service — container for the four characteristics.
+  static const String gloveService = 'd84f9c2e-6b1a-4e57-9f3d-2a8c7e5b1f04';
 
-  /// Gesture Result: NOTIFY — fired once per completed, above-threshold
-  /// gesture. Packet layout per SRS Table III-2 (see [gesturePacketLength]).
-  static const String gestureResult = '4fafc201-1fb5-459e-8fcc-c5c9c3319d42';
+  /// Telemetry: READ + NOTIFY — 29-byte little-endian sensor frame every
+  /// 50 ms (configurable via SET_RATE).
+  static const String telemetry = '7a3e1b9c-2d4f-48a6-b7e2-5c9d0f8a3b61';
 
-  /// Device Status: READ + NOTIFY — battery %, connection state, active mode,
-  /// last error code.
-  static const String deviceStatus = '4fafc201-1fb5-459e-8fcc-c5c9c3319d43';
+  /// Command: WRITE + WRITE-NO-RESPONSE — u8 opcode + optional payload.
+  static const String command = '3f8d2a6b-9c4e-4d7f-a1e3-6b5c8d0e2f49';
 
-  /// App Command: WRITE — app-to-glove control (see [AppCommand]).
-  static const String appCommand = '4fafc201-1fb5-459e-8fcc-c5c9c3319d44';
+  /// Device Status: READ + NOTIFY — 5 bytes every 250 ms.
+  static const String deviceStatus = 'c2b6e8d4-1a7f-4c3e-9d5b-0f2a6e8c4d73';
 
-  /// Gesture result packet length in bytes: word_id u16 + confidence u8 +
-  /// timestamp_ms u32 (little-endian).
+  /// Calibration Info: READ + NOTIFY — 104-byte profile table, pushed after
+  /// every calibration save.
+  static const String calInfo = 'a1f2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+
+  /// TELEMETRY frame length in bytes (Code Reference §5.2).
+  static const int telemetryPacketLength = 29;
+
+  /// STATUS frame length in bytes (Code Reference §5.3).
+  static const int statusPacketLength = 5;
+
+  /// CAL_INFO table length in bytes (Code Reference §5.5).
+  static const int calInfoPacketLength = 104;
+
+  /// Production label packet length in bytes (SRS Table III-2, planned):
+  /// word_id u16 + confidence u8 + timestamp_ms u32 (little-endian).
   static const int gesturePacketLength = 7;
 }
 

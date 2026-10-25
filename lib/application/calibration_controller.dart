@@ -115,7 +115,7 @@ class CalibrationController extends Notifier<CalibrationState> {
     _samples.clear();
     await ref
         .read(gloveConnectionProvider)
-        .sendCommand(AppCommand.calibrate);
+        .sendCommand(AppCommand.startCalibration);
     state = state.copyWith(
       phase: CalibrationPhase.prompting,
       prompts: ref.read(vocabularyRepositoryProvider).letters,
@@ -152,9 +152,11 @@ class CalibrationController extends Notifier<CalibrationState> {
     }
   }
 
-  /// Computes the profile from the captured reps, stores it, and returns
-  /// the glove to idle. The firmware cancel/exit path is TBD — stopStream
-  /// is the closest app command today.
+  /// Computes the profile from the captured reps, stores it, and exits the
+  /// firmware's calibration mode. Driving the firmware wizard steps
+  /// (STATUS.calibrationStep → CAPTURE_FLAT / CAPTURE_90, then the firmware
+  /// saves CAL_INFO itself) is the next FR-8 integration step; this shell
+  /// ends the run with CANCEL so the glove returns to streaming.
   Future<void> _finish(int lastConfidence) async {
     final stats = [
       for (final entry in _samples.entries)
@@ -175,7 +177,7 @@ class CalibrationController extends Notifier<CalibrationState> {
     await ref.read(calibrationProfileStoreProvider).save(profile);
     await ref
         .read(gloveConnectionProvider)
-        .sendCommand(AppCommand.stopStream);
+        .sendCommand(AppCommand.cancelCalibration);
     state = state.copyWith(
       phase: CalibrationPhase.done,
       lastSampleConfidence: lastConfidence,
@@ -184,11 +186,12 @@ class CalibrationController extends Notifier<CalibrationState> {
   }
 
   /// Stops mid-run; nothing is saved (the saved profile, if any, stays).
+  /// CANCEL discards the firmware's in-progress wizard run the same way.
   Future<void> abort() async {
     _samples.clear();
     await ref
         .read(gloveConnectionProvider)
-        .sendCommand(AppCommand.stopStream);
+        .sendCommand(AppCommand.cancelCalibration);
     state = state.copyWith(
       phase: CalibrationPhase.idle,
       promptIndex: 0,

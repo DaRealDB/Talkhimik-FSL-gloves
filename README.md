@@ -46,3 +46,12 @@ The mock glove and in-memory fakes cover everything off-device; hardware
 verification is staged in
 [`docs/ble-integration-checklist.md`](docs/ble-integration-checklist.md)
 (nRF Connect first, then this client).
+
+## Documentation
+
+- [`docs/TALKHIMIK_App_System.md`](docs/TALKHIMIK_App_System.md) — this
+  app, as built: architecture, feature map (SRS codes), GATT contract,
+  persistence, testing.
+- [`docs/TALKHIMIK_Thesis_Reference.md`](docs/TALKHIMIK_Thesis_Reference.md)
+  — consolidated thesis reference: system architecture (what & why) plus the
+  as-built firmware and web dashboard (what runs today).

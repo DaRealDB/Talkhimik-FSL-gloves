@@ -5,7 +5,9 @@ import 'package:talkhimik_app/application/providers.dart';
 import 'package:talkhimik_app/core/strings/app_strings.dart';
 import 'package:talkhimik_app/data/glove/ble_permissions.dart';
 import 'package:talkhimik_app/data/glove/glove_connection.dart';
+import 'package:talkhimik_app/domain/models/cal_info_packet.dart';
 import 'package:talkhimik_app/domain/models/device_status.dart';
+import 'package:talkhimik_app/domain/models/telemetry_packet.dart';
 
 import '../helpers/fake_glove_connection.dart';
 
@@ -73,6 +75,44 @@ void main() {
     final c = makeContainer();
     await emitStatus(const DeviceStatusPacket(batteryPercent: 87, linkUp: true));
     expect(state(c).status?.batteryPercent, 87);
+  });
+
+  test('telemetry frames update state', () async {
+    final c = makeContainer();
+    fake.emitTelemetry(TelemetryPacket(
+      hand: GloveHand.right,
+      seq: 7,
+      angles: const [10, 20, 30, 40, 50],
+      rollDeg: 0,
+      pitchDeg: 0,
+      yawDeg: 0,
+      rawAdc: const [100, 200, 300, 400, 500],
+      calibrationId: 3,
+      quality: 0x1F,
+      receivedAt: DateTime.fromMillisecondsSinceEpoch(1000),
+    ));
+    await pumpEventQueue();
+    expect(state(c).telemetry?.seq, 7);
+    expect(state(c).telemetry?.calibrationId, 3);
+  });
+
+  test('CAL_INFO tables update state', () async {
+    final c = makeContainer();
+    fake.emitCalInfo(CalInfoPacket(
+      validMask: 0x1F,
+      weakMask: 0,
+      calibrationId: 3,
+      flatOhm: const [30000, 30000, 30000, 30000, 30000],
+      bent90Ohm: const [60000, 60000, 60000, 60000, 60000],
+      flatAdc: const [500, 500, 500, 500, 500],
+      bent90Adc: const [1500, 1500, 1500, 1500, 1500],
+      rDiv: const [10000, 10000, 10000, 10000, 10000],
+      spanCounts: const [1000, 1000, 1000, 1000, 1000],
+      firmwareVersion: '1.2.0',
+    ));
+    await pumpEventQueue();
+    expect(state(c).calInfo?.calibrationId, 3);
+    expect(state(c).calInfo?.firmwareVersion, '1.2.0');
   });
 
   test('link drop sets connectionLost immediately; a successful reconnect '

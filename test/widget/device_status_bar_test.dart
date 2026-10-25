@@ -72,17 +72,32 @@ void main() {
     expect(find.byKey(DeviceStatusBar.connectionLostBannerKey), findsNothing);
   });
 
-  testWidgets('shows an error chip for sensor faults', (tester) async {
+  testWidgets('shows an error chip for a resistance fault (code 4)',
+      (tester) async {
     await tester.pumpWidget(wrap(const DeviceStatusBar()));
     fake.emitPhase(GloveConnectionPhase.ready);
     fake.emitStatus(const DeviceStatusPacket(
       batteryPercent: 80,
-      lastErrorCode: 1, // sensor fault
+      lastErrorCode: 4, // resistance outside 1k..100k
     ));
     await tester.pumpAndSettle();
 
     expect(find.byKey(DeviceStatusBar.errorChipKey), findsOneWidget);
     expect(find.text(AppStrings.sensorFault), findsOneWidget);
+  });
+
+  testWidgets('shows the uncalibrated chip while the glove streams '
+      'placeholder angles', (tester) async {
+    await tester.pumpWidget(wrap(const DeviceStatusBar()));
+    fake.emitPhase(GloveConnectionPhase.ready);
+    fake.emitStatus(const DeviceStatusPacket(
+      batteryPercent: 80,
+      uncalibrated: true, // STATUS flags bit0
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(DeviceStatusBar.uncalibratedChipKey), findsOneWidget);
+    expect(find.text(AppStrings.uncalibrated), findsOneWidget);
   });
 
   testWidgets('real glove shows a connect button and surfaces failures',

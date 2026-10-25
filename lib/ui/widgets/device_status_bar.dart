@@ -15,6 +15,7 @@ class DeviceStatusBar extends ConsumerWidget {
   static const connectionLostBannerKey = Key('connection-lost-banner');
   static const batteryKey = Key('battery-indicator');
   static const errorChipKey = Key('glove-error-chip');
+  static const uncalibratedChipKey = Key('glove-uncalibrated-chip');
   static const connectButtonKey = Key('connect-glove-button');
 
   static String _phaseLabel(GloveConnectionPhase phase) => switch (phase) {
@@ -26,13 +27,16 @@ class DeviceStatusBar extends ConsumerWidget {
         GloveConnectionPhase.reconnecting => AppStrings.reconnecting,
       };
 
+  /// Firmware STATUS error codes (Code Reference §5.3); unmapped codes get
+  /// the generic glove-error label.
   static String _errorLabel(int? code) =>
       switch (GloveErrorCode.fromCode(code)) {
         GloveErrorCode.none => '',
-        GloveErrorCode.sensorFault => AppStrings.sensorFault,
-        GloveErrorCode.lowBattery => AppStrings.lowBattery,
-        GloveErrorCode.powerFault => AppStrings.powerFault,
-        GloveErrorCode.bleFault => AppStrings.bleFault,
+        GloveErrorCode.captureNotCalibrating => AppStrings.captureNotCalibrating,
+        GloveErrorCode.unknownCommand => AppStrings.unknownCommand,
+        GloveErrorCode.spanReject => AppStrings.spanReject,
+        GloveErrorCode.resistanceFault => AppStrings.sensorFault,
+        null => AppStrings.gloveError,
       };
 
   @override
@@ -103,6 +107,18 @@ class DeviceStatusBar extends ConsumerWidget {
                   label: Text(errorLabel),
                   labelStyle: TextStyle(color: scheme.onErrorContainer),
                   backgroundColor: scheme.errorContainer,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            // STATUS flags bit0: the glove streams placeholder angles until
+            // the calibration wizard completes (Code Reference §5.3).
+            if (status?.uncalibrated == true &&
+                state.phase == GloveConnectionPhase.ready)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Chip(
+                  key: uncalibratedChipKey,
+                  label: const Text(AppStrings.uncalibrated),
                   visualDensity: VisualDensity.compact,
                 ),
               ),

@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 
+import '../../domain/models/cal_info_packet.dart';
 import '../../domain/models/device_status.dart';
 import '../../domain/models/gesture_result.dart';
+import '../../domain/models/telemetry_packet.dart';
 import 'glove_connection.dart';
 
 /// Demo/test scenarios the mock can run (dev-only; FR debug aid).
@@ -39,6 +41,10 @@ class MockGloveConfig {
 /// for the ESP32-S3 until (and after) hardware exists. First-class, not
 /// throwaway: the mock is how the panel demo runs and how widget tests
 /// exercise every FR without a real device.
+///
+/// The mock models the PRODUCTION glove (label packets over [gestureResults])
+/// rather than the telemetry-stage firmware, so the transcript pipeline is
+/// fully exercisable; its [deviceStatus] follows the firmware STATUS layout.
 class MockGloveConnection implements GloveConnection {
   MockGloveConnection({
     MockGloveConfig config = const MockGloveConfig(),
@@ -51,14 +57,16 @@ class MockGloveConnection implements GloveConnection {
   final DateTime Function() _clock;
 
   final _gestures = StreamController<GestureResultPacket>.broadcast();
+  final _telemetry = StreamController<TelemetryPacket>.broadcast();
   final _status = StreamController<DeviceStatusPacket>.broadcast();
+  final _calInfo = StreamController<CalInfoPacket>.broadcast();
   final _phases = StreamController<GloveConnectionPhase>.broadcast();
 
   /// Every command the app sent, in order (assertion aid for tests/demos).
   final List<AppCommand> commandLog = [];
 
   GloveConnectionPhase _phase = GloveConnectionPhase.disconnected;
-  GloveMode _mode = GloveMode.idle;
+  GloveMode _mode = GloveMode.streaming;
   int _battery;
   int? _lastError;
 
@@ -77,7 +85,13 @@ class MockGloveConnection implements GloveConnection {
   Stream<GestureResultPacket> get gestureResults => _gestures.stream;
 
   @override
+  Stream<TelemetryPacket> get telemetry => _telemetry.stream;
+
+  @override
   Stream<DeviceStatusPacket> get deviceStatus => _status.stream;
+
+  @override
+  Stream<CalInfoPacket> get calInfo => _calInfo.stream;
 
   @override
   Stream<GloveConnectionPhase> get phaseChanges => _phases.stream;
@@ -103,18 +117,19 @@ class MockGloveConnection implements GloveConnection {
   Future<void> reconnect() => connect();
 
   @override
-  Future<void> sendCommand(AppCommand command) async {
+  Future<void> sendCommand(AppCommand command, {int value = 0}) async {
     commandLog.add(command);
     switch (command) {
-      case AppCommand.calibrate:
+      case AppCommand.startCalibration:
+      case AppCommand.captureFlat:
+      case AppCommand.capture90:
         _mode = GloveMode.calibrating;
-      case AppCommand.sleep:
-        _mode = GloveMode.sleeping;
-      case AppCommand.startStream:
+      case AppCommand.cancelCalibration:
         _mode = GloveMode.streaming;
-      case AppCommand.stopStream:
-        _mode = GloveMode.idle;
-      case AppCommand.queryStatus:
+      case AppCommand.setRate:
+      case AppCommand.zeroYaw:
+      case AppCommand.setHand:
+      case AppCommand.vibrate:
         break;
     }
     _emitStatus();
@@ -172,17 +187,18 @@ class MockGloveConnection implements GloveConnection {
           );
         });
       case MockScenario.lowBattery:
-        // Drain 100 → 12 % over ~60 s, one Device Status notify per second;
-        // below 15 % the glove also reports the low-battery error (C-F6).
+        // Drain 100 → 12 % over ~60 s, one Device Status notify per second.
+        // The UI flags < 15 % from the percentage itself (the firmware has
+        // no low-battery error code).
         _battery = _config.batteryStartPercent;
         _scenarioTimer = Timer.periodic(const Duration(seconds: 1), (_) {
           _battery = max(12, _battery - 2);
-          if (_battery < 15) _lastError = GloveErrorCode.lowBattery.code;
           _emitStatus();
           if (_battery <= 12) stopScenario();
         });
       case MockScenario.sensorFault:
-        _lastError = GloveErrorCode.sensorFault.code;
+        // Firmware error 4: resistance outside 1k..100k (finger fault).
+        _lastError = GloveErrorCode.resistanceFault.code;
         _emitStatus();
         stopScenario();
       case MockScenario.randomDisconnect:
@@ -253,7 +269,9 @@ class MockGloveConnection implements GloveConnection {
     stopScenario();
     _stopReconnectTimer();
     _gestures.close();
+    _telemetry.close();
     _status.close();
+    _calInfo.close();
     _phases.close();
   }
 }

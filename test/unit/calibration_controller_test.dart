@@ -67,7 +67,7 @@ void main() {
     expect(state.phase, CalibrationPhase.prompting);
     expect(state.prompts.length, 28);
     expect(state.currentPrompt?.wordId, 1);
-    expect(glove.commands, contains(AppCommand.calibrate));
+    expect(glove.commands, contains(AppCommand.startCalibration));
 
     // Two reps per word across the whole alphabet; give word 1 the values
     // 90/94 so its aggregate is deterministic.
@@ -90,7 +90,7 @@ void main() {
     expect(first.minConfidence, 90);
     expect(first.maxConfidence, 94);
     expect(store.saved, same(done.profile));
-    expect(glove.commands, contains(AppCommand.stopStream));
+    expect(glove.commands, contains(AppCommand.cancelCalibration));
   });
 
   test('samples outside a run are ignored', () async {
@@ -110,7 +110,7 @@ void main() {
     expect(c.read(calibrationControllerProvider).phase,
         CalibrationPhase.idle);
     expect(store.saved, isNull);
-    expect(glove.commands, contains(AppCommand.stopStream));
+    expect(glove.commands, contains(AppCommand.cancelCalibration));
 
     // Prompts restart from the top on the next run.
     await c.read(calibrationControllerProvider.notifier).start();

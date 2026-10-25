@@ -75,7 +75,7 @@ void main() {
     expect(state.phase, CollectionPhase.prompting);
     expect(state.sessionId, startsWith('S-'));
     expect(state.participantId, 'P-001');
-    expect(glove.commands, contains(AppCommand.startStream));
+    expect(glove.commands, contains(AppCommand.setRate));
 
     // Word 1: one match, one mismatch (signer signed B during the A prompt).
     await emit(packet(1, 95));
@@ -129,7 +129,9 @@ void main() {
     expect(done.phase, CollectionPhase.done);
     expect(done.totalRecorded, 28);
     expect(logStore.events, hasLength(28));
-    expect(glove.commands, contains(AppCommand.stopStream));
+    // Only the start command: telemetry streams continuously in the
+    // firmware contract, so there is no stop command.
+    expect(glove.commands, [AppCommand.setRate]);
     expect(logStore.sessionList.map((s) => s.sessionId),
         contains(done.sessionId));
   });
@@ -143,6 +145,6 @@ void main() {
     expect(c.read(dataCollectionControllerProvider).phase,
         CollectionPhase.idle);
     expect(logStore.events, hasLength(1));
-    expect(glove.commands, contains(AppCommand.stopStream));
+    expect(glove.commands, [AppCommand.setRate]);
   });
 }

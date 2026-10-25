@@ -134,9 +134,11 @@ class DataCollectionController extends Notifier<CollectionState> {
           startedAt: DateTime.now(),
         ));
 
+    // Telemetry always streams; SET_RATE(50 ms) guarantees the firmware's
+    // full-rate capture for the run (the firmware clamps 20–1000).
     await ref
         .read(gloveConnectionProvider)
-        .sendCommand(AppCommand.startStream);
+        .sendCommand(AppCommand.setRate, value: 50);
     state = state.copyWith(
       phase: CollectionPhase.prompting,
       prompts: ref.read(vocabularyRepositoryProvider).letters,
@@ -222,9 +224,8 @@ class DataCollectionController extends Notifier<CollectionState> {
   }
 
   Future<void> _finish(Map<int, int> counts, int? lastConfidence) async {
-    await ref
-        .read(gloveConnectionProvider)
-        .sendCommand(AppCommand.stopStream);
+    // Telemetry keeps streaming at the set rate; no stop command exists in
+    // the firmware contract (Code Reference §5.4).
     state = state.copyWith(
       phase: CollectionPhase.done,
       counts: counts,
@@ -235,9 +236,6 @@ class DataCollectionController extends Notifier<CollectionState> {
   /// Stops mid-run. Rows already recorded stay (FR-10 data integrity);
   /// only the in-flight prompt is discarded.
   Future<void> abort() async {
-    await ref
-        .read(gloveConnectionProvider)
-        .sendCommand(AppCommand.stopStream);
     state = state.copyWith(
       phase: CollectionPhase.idle,
       promptIndex: 0,

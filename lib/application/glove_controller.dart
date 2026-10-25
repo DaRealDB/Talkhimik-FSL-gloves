@@ -6,7 +6,9 @@ import '../core/constants/gatt_ids.dart';
 import '../core/strings/app_strings.dart';
 import '../data/glove/ble_permissions.dart';
 import '../data/glove/glove_connection.dart';
+import '../domain/models/cal_info_packet.dart';
 import '../domain/models/device_status.dart';
+import '../domain/models/telemetry_packet.dart';
 import 'providers.dart'; // composition root (Riverpod-idiomatic cycle)
 
 /// UI-facing connection state (FR-12).
@@ -14,6 +16,8 @@ class GloveState {
   const GloveState({
     this.phase = GloveConnectionPhase.disconnected,
     this.status,
+    this.telemetry,
+    this.calInfo,
     this.connectionLost = false,
     this.reconnectAttempt = 0,
     this.connectError,
@@ -21,6 +25,13 @@ class GloveState {
 
   final GloveConnectionPhase phase;
   final DeviceStatusPacket? status;
+
+  /// Latest decoded 29-byte sensor frame (null until the glove streams).
+  final TelemetryPacket? telemetry;
+
+  /// Latest calibration table read from the glove (calId, firmware
+  /// version, validity masks).
+  final CalInfoPacket? calInfo;
 
   /// True while the link is down for a reason other than a deliberate
   /// disconnect — drives the visible "connection lost" banner (C-S5).
@@ -36,6 +47,8 @@ class GloveState {
   GloveState copyWith({
     GloveConnectionPhase? phase,
     DeviceStatusPacket? status,
+    TelemetryPacket? telemetry,
+    CalInfoPacket? calInfo,
     bool? connectionLost,
     int? reconnectAttempt,
     String? connectError,
@@ -43,6 +56,8 @@ class GloveState {
       GloveState(
         phase: phase ?? this.phase,
         status: status ?? this.status,
+        telemetry: telemetry ?? this.telemetry,
+        calInfo: calInfo ?? this.calInfo,
         connectionLost: connectionLost ?? this.connectionLost,
         reconnectAttempt: reconnectAttempt ?? this.reconnectAttempt,
         connectError: connectError,
@@ -63,6 +78,8 @@ class GloveController extends Notifier<GloveState> {
   final Future<void> Function(Duration) _delay;
 
   StreamSubscription<DeviceStatusPacket>? _statusSub;
+  StreamSubscription<TelemetryPacket>? _telemetrySub;
+  StreamSubscription<CalInfoPacket>? _calInfoSub;
   StreamSubscription<GloveConnectionPhase>? _phaseSub;
   bool _manualDisconnect = false;
   bool _explicitConnectInFlight = false;
@@ -74,9 +91,15 @@ class GloveController extends Notifier<GloveState> {
     final connection = ref.read(gloveConnectionProvider);
     _statusSub =
         connection.deviceStatus.listen((s) => state = state.copyWith(status: s));
+    _telemetrySub = connection.telemetry
+        .listen((t) => state = state.copyWith(telemetry: t));
+    _calInfoSub = connection.calInfo
+        .listen((c) => state = state.copyWith(calInfo: c));
     _phaseSub = connection.phaseChanges.listen(_onPhase);
     ref.onDispose(() {
       _statusSub?.cancel();
+      _telemetrySub?.cancel();
+      _calInfoSub?.cancel();
       _phaseSub?.cancel();
     });
     return const GloveState();

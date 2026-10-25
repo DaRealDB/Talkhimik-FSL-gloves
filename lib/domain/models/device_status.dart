@@ -1,52 +1,65 @@
 import 'package:meta/meta.dart';
 
 /// Operating mode reported by the glove through the Device Status
-/// characteristic (SRS C-H3, C-F6).
-enum GloveMode { idle, streaming, calibrating, sleeping, unknown }
+/// characteristic (firmware STATUS byte 0; Code Reference §5.3).
+enum GloveMode { streaming, calibrating, unknown }
 
-/// Error codes the glove can report through Device Status.
-///
-/// The SRS does not enumerate firmware error codes; these values are a
-/// placeholder enumeration to be finalized with the firmware team.
+/// Error codes the glove can report through Device Status (STATUS byte 4;
+/// Code Reference §5.3).
 enum GloveErrorCode {
   none(0),
-  sensorFault(1),
-  lowBattery(2),
-  powerFault(3),
-  bleFault(4);
+  captureNotCalibrating(1),
+  unknownCommand(2),
+  spanReject(3),
+  resistanceFault(4);
 
   const GloveErrorCode(this.code);
   final int code;
 
-  static GloveErrorCode fromCode(int? code) => switch (code) {
-        1 => sensorFault,
-        2 => lowBattery,
-        3 => powerFault,
-        4 => bleFault,
+  /// Null for codes the firmware does not define (the UI shows a generic
+  /// "glove error" chip for those).
+  static GloveErrorCode? fromCode(int? code) => switch (code) {
+        1 => captureNotCalibrating,
+        2 => unknownCommand,
+        3 => spanReject,
+        4 => resistanceFault,
         0 || null => none,
-        _ => bleFault,
+        _ => null,
       };
 }
 
-/// Snapshot of the glove's Device Status characteristic (SRS Table III-1).
+/// Snapshot of the glove's Device Status characteristic — the firmware's
+/// 5-byte STATUS frame (Code Reference §5.3): mode, calibration step,
+/// battery, flags, and error code.
 @immutable
 class DeviceStatusPacket {
   const DeviceStatusPacket({
     this.batteryPercent,
     this.mode = GloveMode.unknown,
+    this.calibrationStep = 0,
+    this.uncalibrated = false,
     this.linkUp = false,
     this.lastErrorCode,
   });
 
-  /// Battery charge, 0–100; null when the glove did not report it.
+  /// Battery charge, 0–100; null when the glove did not report it
+  /// (0xFF — the XIAO's VBAT divider is on ADC2 and is disabled).
   final int? batteryPercent;
 
   final GloveMode mode;
 
+  /// Calibration wizard progress: 0 = idle, 1–10 = thumb-flat … pinky-90.
+  final int calibrationStep;
+
+  /// True while the glove streams placeholder angles (STATUS flags bit0) —
+  /// the calibration wizard has not completed for this glove.
+  final bool uncalibrated;
+
   /// True while the BLE link is up.
   final bool linkUp;
 
-  /// Last error reported by the glove (e.g. sensor fault); null when none.
+  /// Last error reported by the glove (GloveErrorCode values); null when
+  /// none.
   final int? lastErrorCode;
 
   bool get hasError => lastErrorCode != null && lastErrorCode != 0;

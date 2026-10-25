@@ -4,14 +4,19 @@ import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '../../core/constants/gatt_ids.dart';
+import '../../domain/models/cal_info_packet.dart';
 import '../../domain/models/device_status.dart';
 import '../../domain/models/gesture_result.dart';
+import '../../domain/models/telemetry_packet.dart';
+import '../codec/cal_info_codec.dart';
 import '../codec/device_status_codec.dart';
-import '../codec/gesture_packet_codec.dart';
+import '../codec/telemetry_packet_codec.dart';
 import 'ble_permissions.dart';
 import 'glove_connection.dart';
 
-/// Real BLE implementation over flutter_blue_plus (SRS C-S1, C-F5, C-F7).
+/// Real BLE implementation over flutter_blue_plus, speaking the as-built
+/// firmware GATT contract (Code Reference §5: TELEMETRY / STATUS / CAL_INFO /
+/// COMMAND on service d84f9c2e-…, device name TALKHIMIK-L/R).
 ///
 /// Contract with the controller layer (glove_controller.dart):
 ///  * phases are emitted only for PROGRESS (scanning → connecting →
@@ -40,8 +45,12 @@ class FlutterBlueGloveConnection implements GloveConnection {
   /// How long one connect + service discovery attempt may take.
   final Duration connectTimeout;
 
+  // Label packets are a later firmware stage; the stream stays open so the
+  // transcript pipeline is identical to the mock's.
   final _gestures = StreamController<GestureResultPacket>.broadcast();
+  final _telemetry = StreamController<TelemetryPacket>.broadcast();
   final _status = StreamController<DeviceStatusPacket>.broadcast();
+  final _calInfo = StreamController<CalInfoPacket>.broadcast();
   final _phases = StreamController<GloveConnectionPhase>.broadcast();
 
   final List<StreamSubscription<Object?>> _subs = [];
@@ -54,7 +63,13 @@ class FlutterBlueGloveConnection implements GloveConnection {
   Stream<GestureResultPacket> get gestureResults => _gestures.stream;
 
   @override
+  Stream<TelemetryPacket> get telemetry => _telemetry.stream;
+
+  @override
   Stream<DeviceStatusPacket> get deviceStatus => _status.stream;
+
+  @override
+  Stream<CalInfoPacket> get calInfo => _calInfo.stream;
 
   @override
   Stream<GloveConnectionPhase> get phaseChanges => _phases.stream;
@@ -80,22 +95,24 @@ class FlutterBlueGloveConnection implements GloveConnection {
         await FlutterBluePlus.turnOn();
       }
 
-      // 3. Scan for the glove by advertised name + service (SRS C-F4).
+      // 3. Scan for a glove by advertised name prefix (C-F4). Deliberately
+      //    UNFILTERED: ColorOS and other OEM stacks throttle/drop service-
+      //    UUID-filtered LE scans into zero results, and a name-prefix match
+      //    in Dart is reliable everywhere. Step 5's GATT discovery still
+      //    validates the service contract.
       _addPhase(GloveConnectionPhase.scanning);
-      await FlutterBluePlus.startScan(
-        withServices: [Guid(GattIds.gloveService)],
-        timeout: scanTimeout,
-      );
-      final result = await FlutterBluePlus.onScanResults
-          .expand((results) => results)
-          .firstWhere(
-              (r) => r.advertisementData.advName == GattIds.deviceName)
-          .timeout(
-            scanTimeout,
-            onTimeout: () => throw StateError(
-                'Glove "${GattIds.deviceName}" not found within '
-                '${scanTimeout.inSeconds} s'),
-          );
+      await FlutterBluePlus.startScan(timeout: scanTimeout);
+      final ScanResult result;
+      try {
+        result = await FlutterBluePlus.onScanResults
+            .expand((results) => results)
+            .firstWhere((r) => r.advertisementData.advName
+                .startsWith(GattIds.deviceNamePrefix))
+            .timeout(scanTimeout);
+      } on TimeoutException {
+        throw StateError('No "${GattIds.deviceNamePrefix}-*" glove found '
+            'within ${scanTimeout.inSeconds} s');
+      }
       if (FlutterBluePlus.isScanningNow) {
         await FlutterBluePlus.stopScan();
       }
@@ -108,22 +125,22 @@ class FlutterBlueGloveConnection implements GloveConnection {
       _addPhase(GloveConnectionPhase.discoveringServices);
       final services = await target.discoverServices();
 
-      // 5. Find the three characteristics (Table III-1); a missing one
-      //    means the profile does not match the SRS contract.
-      final gestureChar =
-          _findCharacteristic(services, GattIds.gestureResult);
-      final statusChar =
-          _findCharacteristic(services, GattIds.deviceStatus);
-      final commandChar = _findCharacteristic(services, GattIds.appCommand);
-      if (gestureChar == null || statusChar == null || commandChar == null) {
-        throw StateError('Glove GATT profile does not match SRS Table III-1');
+      // 5. Find the four characteristics (Code Reference §5.1); a missing
+      //    one means the profile does not match the firmware contract.
+      final telemetryChar = _findCharacteristic(services, GattIds.telemetry);
+      final statusChar = _findCharacteristic(services, GattIds.deviceStatus);
+      final commandChar = _findCharacteristic(services, GattIds.command);
+      final calInfoChar = _findCharacteristic(services, GattIds.calInfo);
+      if (telemetryChar == null ||
+          statusChar == null ||
+          commandChar == null ||
+          calInfoChar == null) {
+        throw StateError(
+            'Glove GATT profile does not match the firmware contract '
+            '(Code Reference §5.1)');
       }
 
-      // 6. Subscribe to the two NOTIFY characteristics.
-      await gestureChar.setNotifyValue(true);
-      await statusChar.setNotifyValue(true);
-
-      // 7. Link-loss detection feeds the auto-reconnect state machine
+      // 6. Link-loss detection feeds the auto-reconnect state machine
       //    (C-S5, NFR-9: the banner must appear within 3 s).
       _track(target.connectionState.listen((state) {
         if (state == BluetoothConnectionState.disconnected &&
@@ -132,20 +149,20 @@ class FlutterBlueGloveConnection implements GloveConnection {
         }
       }));
 
-      // 8. Gesture results: decode the 7-byte packet (Table III-2).
+      // 7. Telemetry: decode the 29-byte frames (Code Reference §5.2).
       //    Malformed packets are skipped — the link stays up.
-      final gestureSub = gestureChar.onValueReceived.listen((bytes) {
+      final telemetrySub = telemetryChar.onValueReceived.listen((bytes) {
         try {
-          _gestures.add(
-              GesturePacketCodec.decode(Uint8List.fromList(bytes)));
+          _telemetry.add(
+              TelemetryPacketCodec.decode(Uint8List.fromList(bytes)));
         } on FormatException {
-          // Skipped: not a gesture result payload.
+          // Skipped: not a telemetry payload.
         }
       });
-      _track(gestureSub);
-      target.cancelWhenDisconnected(gestureSub);
+      _track(telemetrySub);
+      target.cancelWhenDisconnected(telemetrySub);
 
-      // 9. Device status: READ once now, then NOTIFY keeps it fresh.
+      // 8. Device status: READ once now, then NOTIFY keeps it fresh.
       final statusSub = statusChar.onValueReceived.listen((bytes) {
         try {
           _status.add(DeviceStatusCodec.decode(Uint8List.fromList(bytes)));
@@ -156,14 +173,31 @@ class FlutterBlueGloveConnection implements GloveConnection {
       _track(statusSub);
       target.cancelWhenDisconnected(statusSub);
       try {
-        final initial =
-            Uint8List.fromList(await statusChar.read());
+        final initial = Uint8List.fromList(await statusChar.read());
         _status.add(DeviceStatusCodec.decode(initial));
       } on FormatException {
         // Firmware contract mismatch; the NOTIFY path still works.
       }
 
-      // 10. Short connection interval for snappy gesture → speech
+      // 9. CAL_INFO: READ once (validity, firmware version), NOTIFY keeps
+      //    the table fresh after each calibration save.
+      final calInfoSub = calInfoChar.onValueReceived.listen((bytes) {
+        try {
+          _calInfo.add(CalInfoCodec.decode(Uint8List.fromList(bytes)));
+        } on FormatException {
+          // Skipped: not a CAL_INFO table.
+        }
+      });
+      _track(calInfoSub);
+      target.cancelWhenDisconnected(calInfoSub);
+      try {
+        final initial = Uint8List.fromList(await calInfoChar.read());
+        _calInfo.add(CalInfoCodec.decode(initial));
+      } on FormatException {
+        // Firmware contract mismatch; the NOTIFY path still works.
+      }
+
+      // 10. Short connection interval for snappy telemetry
       //     (per Talkhimik_BLE_Integration_Steps.md, 15–30 ms).
       try {
         await target.requestConnectionPriority(
@@ -186,16 +220,17 @@ class FlutterBlueGloveConnection implements GloveConnection {
   @override
   Future<void> reconnect() => connect();
 
-  /// WRITE one command byte to the App Command characteristic (C-F5).
+  /// WRITE one command (opcode + optional payload) to the Command
+  /// characteristic (C-F5).
   @override
-  Future<void> sendCommand(AppCommand command) async {
+  Future<void> sendCommand(AppCommand command, {int value = 0}) async {
     _assertNotDisposed();
     final device = _device;
     final commandChar = _commandChar;
     if (device == null || !device.isConnected || commandChar == null) {
       throw StateError('Glove is not connected');
     }
-    await commandChar.write([command.code]);
+    await commandChar.write(command.encode(value: value));
   }
 
   /// Deliberate teardown — must NOT trigger auto-reconnect.
@@ -211,7 +246,9 @@ class FlutterBlueGloveConnection implements GloveConnection {
     _disposed = true;
     _teardownSubs();
     _gestures.close();
+    _telemetry.close();
     _status.close();
+    _calInfo.close();
     _phases.close();
   }
 

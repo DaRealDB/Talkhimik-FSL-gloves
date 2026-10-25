@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce/hive.dart';
@@ -14,9 +15,10 @@ Future<void> main() async {
 
   // Local persistence (FR-10): Hive boxes for events, the sync queue,
   // participants, and sessions. Pure Dart — same behavior on Windows and
-  // Android field devices.
-  final appDir = await getApplicationSupportDirectory();
-  Hive.init(appDir.path);
+  // Android field devices. On web Hive uses IndexedDB and ignores the path
+  // (path_provider has no web implementation), so skip the lookup there.
+  final appDir = kIsWeb ? '' : (await getApplicationSupportDirectory()).path;
+  Hive.init(appDir);
   final logStore = HiveLogStore(Hive);
   await logStore.init();
 

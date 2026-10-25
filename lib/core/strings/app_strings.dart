@@ -17,10 +17,12 @@ class AppStrings {
   static const connected = 'Connected';
   static const disconnected = 'Not connected';
   static const reconnecting = 'Reconnecting…';
-  static const lowBattery = 'Low battery';
+  static const uncalibrated = 'Uncalibrated';
+  // Firmware STATUS error codes (Code Reference §5.3)
   static const sensorFault = 'Sensor fault';
-  static const powerFault = 'Power fault';
-  static const bleFault = 'BLE fault';
+  static const captureNotCalibrating = 'Capture not allowed';
+  static const unknownCommand = 'Unknown command';
+  static const spanReject = 'Redo — too close to flat';
   static const gloveError = 'Glove error';
   static const connectGlove = 'Connect glove';
   static const blePermissionDenied =
