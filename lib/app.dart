@@ -5,9 +5,10 @@ import 'core/theme/app_theme.dart';
 import 'ui/screens/calibration_screen.dart';
 import 'ui/screens/collect_screen.dart';
 import 'ui/screens/export_screen.dart';
-import 'ui/screens/home_screen.dart';
 import 'ui/screens/live_screen.dart';
+import 'ui/screens/more_screen.dart';
 import 'ui/screens/settings_screen.dart';
+import 'ui/shell.dart';
 
 class TalkhimikApp extends StatelessWidget {
   const TalkhimikApp({super.key});
@@ -22,13 +23,14 @@ class TalkhimikApp extends StatelessWidget {
       darkTheme: buildDarkTheme(),
       themeMode: ThemeMode.light,
       debugShowCheckedModeBanner: false,
-      home: const HomeScreen(),
+      home: const AppShell(),
       routes: {
         '/live': (_) => const LiveScreen(),
         '/settings': (_) => const SettingsScreen(),
         '/export': (_) => const ExportScreen(),
         '/calibration': (_) => const CalibrationScreen(),
         '/collect': (_) => const CollectScreen(),
+        '/more': (_) => const MoreScreen(),
       },
     );
   }

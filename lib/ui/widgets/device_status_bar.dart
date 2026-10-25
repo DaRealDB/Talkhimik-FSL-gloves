@@ -6,13 +6,13 @@ import '../../core/strings/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/motion.dart';
 import '../../data/glove/glove_connection.dart';
-import '../../data/glove/mock_glove_connection.dart';
-import '../../domain/models/device_status.dart';
 import 'anim.dart';
 
-/// One-line connection status: pairing phase, glove name (mock vs real),
-/// battery, error states, and the "connection lost" banner (SRS FR-12,
-/// C-S5, NFR-9).
+/// ONE status pill (design refresh): filled brand-blue dot + one short
+/// label, a neutral "Demo" tag only in mock mode, battery ONLY when the
+/// glove reports a real value (0xFF = unknown → hidden, never a
+/// placeholder). Tapping opens the per-hand connection details sheet.
+/// A banner slot below shows warnings with the diagonal end cap.
 class DeviceStatusBar extends ConsumerWidget {
   const DeviceStatusBar({super.key});
 
@@ -21,7 +21,156 @@ class DeviceStatusBar extends ConsumerWidget {
   static const errorChipKey = Key('glove-error-chip');
   static const uncalibratedChipKey = Key('glove-uncalibrated-chip');
   static const connectButtonKey = Key('connect-glove-button');
-  static const rightSourceChipKey = Key('right-source-chip');
+  static const statusPillKey = Key('status-pill');
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(gloveControllerProvider);
+    final rightState = ref.watch(rightGloveControllerProvider);
+    final isMock = ref.watch(gloveIsMockProvider);
+    final scheme = Theme.of(context).colorScheme;
+
+    final leftReady = state.phase == GloveConnectionPhase.ready;
+    final rightReady = rightState.phase == GloveConnectionPhase.ready;
+    final anyBusy = _busy(state.phase) || _busy(rightState.phase);
+    final connected = leftReady || rightReady;
+
+    final label = !connected && anyBusy
+        ? AppStrings.statusConnecting
+        : leftReady && rightReady
+            ? AppStrings.statusBothConnected
+            : leftReady || rightReady
+                ? AppStrings.statusOneConnected
+                : AppStrings.statusNotConnected;
+
+    final battery = state.status?.batteryPercent;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // The status pill — tap for per-hand details + reconnect.
+        InkWell(
+          key: statusPillKey,
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => _showDetails(context, ref),
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: scheme.outlineVariant),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.shadowBlue,
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Filled brand-blue dot = connected; pulse while busy.
+                LoopPulse(
+                  scale: 1.3,
+                  pulse: anyBusy && !connected,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: connected ? scheme.primary : scheme.outline,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: TalkhimikMotion.of(context).resolve(
+                        context, TalkhimikMotion.values.quick),
+                    child: Text(
+                      label,
+                      key: ValueKey(label),
+                      style: Theme.of(context).textTheme.labelLarge,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                // Neutral "Demo" tag — mock mode only; never brand blue.
+                if (isMock)
+                  Container(
+                    margin: const EdgeInsets.only(left: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      AppStrings.demoTag,
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelSmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                // Battery only when the glove reports a real value.
+                if (battery != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Row(
+                      key: batteryKey,
+                      children: [
+                        Icon(
+                          battery < 15
+                              ? Icons.battery_alert
+                              : Icons.battery_full_outlined,
+                          size: 16,
+                          color: battery < 15
+                              ? scheme.error
+                              : scheme.onSurfaceVariant,
+                        ),
+                        Text(
+                          '$battery%',
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: battery < 15 ? scheme.error : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        // Banner slot: one warning at a time (connection lost /
+        // uncalibrated / low battery), diagonal end cap.
+        if (state.connectionLost || rightState.connectionLost)
+          _Banner(
+            key: connectionLostBannerKey,
+            text: AppStrings.connectionLost,
+            colors: [scheme.errorContainer, scheme.error],
+            textColor: scheme.onErrorContainer,
+          )
+        else if ((state.status?.uncalibrated ?? false) ||
+            (rightState.status?.uncalibrated ?? false))
+          _Banner(
+            key: uncalibratedChipKey,
+            text: AppStrings.uncalibratedBanner,
+            colors: [AppColors.azure, AppColors.navy],
+            textColor: AppColors.navyText,
+          )
+        else if (state.status?.hasError ?? false)
+          _Banner(
+            key: errorChipKey,
+            text: AppStrings.gloveError,
+            colors: [scheme.errorContainer, scheme.error],
+            textColor: scheme.onErrorContainer,
+          ),
+      ],
+    );
+  }
 
   static bool _busy(GloveConnectionPhase phase) => switch (phase) {
         GloveConnectionPhase.scanning ||
@@ -32,208 +181,113 @@ class DeviceStatusBar extends ConsumerWidget {
         _ => false,
       };
 
-  static String _phaseLabel(GloveConnectionPhase phase) => switch (phase) {
-        GloveConnectionPhase.disconnected => AppStrings.disconnected,
-        GloveConnectionPhase.scanning => 'Scanning…',
-        GloveConnectionPhase.connecting => 'Connecting…',
-        GloveConnectionPhase.discoveringServices => 'Discovering services…',
-        GloveConnectionPhase.ready => AppStrings.connected,
-        GloveConnectionPhase.reconnecting => AppStrings.reconnecting,
-      };
+  /// Per-hand status + reconnect, in a bottom sheet (progressive
+  /// disclosure — BLE detail stays one tap away, not on the surface).
+  void _showDetails(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => const _DetailsSheet(),
+    );
+  }
+}
 
-  /// Firmware STATUS error codes (Code Reference §5.3); unmapped codes get
-  /// the generic glove-error label.
-  static String _errorLabel(int? code) =>
-      switch (GloveErrorCode.fromCode(code)) {
-        GloveErrorCode.none => '',
-        GloveErrorCode.captureNotCalibrating => AppStrings.captureNotCalibrating,
-        GloveErrorCode.unknownCommand => AppStrings.unknownCommand,
-        GloveErrorCode.spanReject => AppStrings.spanReject,
-        GloveErrorCode.resistanceFault => AppStrings.sensorFault,
-        null => AppStrings.gloveError,
-      };
+class _DetailsSheet extends ConsumerWidget {
+  const _DetailsSheet();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(gloveControllerProvider);
-    // Aggregate for the second glove (master §7.3): the bar keeps its
-    // single-glove look while only the left is connected, and adds the
-    // right hand only when it is actually up.
-    final rightState = ref.watch(rightGloveControllerProvider);
-    // Per-hand source indicator (bugfix FR-12): never ambiguous whether a
-    // hand is the demo or the real glove — watches the provider so a live
-    // Force-mock swap updates the labels.
-    final isMock = ref.watch(gloveIsMockProvider);
-    final rightIsMock =
-        ref.watch(rightGloveConnectionProvider) is MockGloveConnection;
-    final scheme = Theme.of(context).colorScheme;
-    final status = state.status;
-    final rightStatus = rightState.status;
-
-    final leftReady = state.phase == GloveConnectionPhase.ready;
-    final rightReady = rightState.phase == GloveConnectionPhase.ready;
-    final anyBusy = _busy(state.phase) || _busy(rightState.phase);
-
-    final dotColor = (leftReady || rightReady)
-        ? AppColors.success
-        : anyBusy
-            ? AppColors.warning
-            : scheme.outline;
-
-    final battery = status?.batteryPercent;
-    final batteryLow = battery != null && battery < 15;
-    final errorLabel = _errorLabel(status?.lastErrorCode);
-    final uncalibrated = (status?.uncalibrated ?? false) ||
-        (rightStatus?.uncalibrated ?? false);
-    final gloveLabel = isMock ? AppStrings.mockGloveName : AppStrings.realGloveName;
-
-    final phaseText = (leftReady && rightReady)
-        ? '${_phaseLabel(state.phase)} · L + R'
-        : rightReady
-            ? '${AppStrings.connected} (R)'
-            : _phaseLabel(state.phase);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            // Subtle looping pulse while scanning/connecting (static at
-            // rest, under reduce-motion, and in tests — see anim.dart).
-            LoopPulse(
-              scale: 1.25,
-              pulse: anyBusy && !(leftReady || rightReady),
-              child: Container(
-                width: 10,
-                height: 10,
-                decoration:
-                    BoxDecoration(color: dotColor, shape: BoxShape.circle),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: TalkhimikMotion.of(context).resolve(
-                    context, TalkhimikMotion.values.quick),
-                child: Text(
-                  '$gloveLabel · $phaseText',
-                  key: ValueKey('$gloveLabel · $phaseText'),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            // Trailing cluster wraps instead of overflowing at narrow
-            // widths / large text scales (typography pass).
-            Flexible(
-              child: Wrap(
-                alignment: WrapAlignment.end,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 4,
-                runSpacing: 4,
-                children: [
-                  if (battery != null)
-                    Row(
-                      key: batteryKey,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          batteryLow
-                              ? Icons.battery_alert
-                              : Icons.battery_full_outlined,
-                          size: 16,
-                          color: batteryLow
-                              ? scheme.error
-                              : scheme.onSurfaceVariant,
-                        ),
-                        Text(
-                          '$battery%',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelLarge
-                              ?.copyWith(
-                                color: batteryLow ? scheme.error : null,
-                                fontWeight: batteryLow
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                        ),
-                      ],
-                    ),
-                  if (errorLabel.isNotEmpty)
-                    Chip(
-                      key: errorChipKey,
-                      label: Text(errorLabel),
-                      labelStyle: Theme.of(context)
-                          .textTheme
-                          .labelMedium
-                          ?.copyWith(color: scheme.onErrorContainer),
-                      backgroundColor: scheme.errorContainer,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  // STATUS flags bit0: the glove streams placeholder angles
-                  // until the calibration wizard completes (§5.3).
-                  if (uncalibrated && (leftReady || rightReady))
-                    Chip(
-                      key: uncalibratedChipKey,
-                      label: const Text(AppStrings.uncalibrated),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  // The right glove's source, shown once it is up — the
-                  // left glove's source is the main label.
-                  if (rightReady)
-                    Chip(
-                      key: rightSourceChipKey,
-                      label: Text(
-                          'R · ${rightIsMock ? AppStrings.mockGloveName : AppStrings.realGloveName}'),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  // The real glove connects explicitly (C-S1); the mock
-                  // auto-connects on the home screen.
-                  if (!isMock &&
-                      state.phase == GloveConnectionPhase.disconnected)
-                    IconButton(
-                      key: connectButtonKey,
-                      tooltip: AppStrings.connectGlove,
-                      visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.bluetooth_searching),
-                      onPressed: () async {
-                        await ref
-                            .read(gloveControllerProvider.notifier)
-                            .connect();
-                        if (!context.mounted) return;
-                        final error =
-                            ref.read(gloveControllerProvider).connectError;
-                        if (error != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(error)),
-                          );
-                        }
-                      },
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        if (state.connectionLost || rightState.connectionLost)
-          Container(
-            key: connectionLostBannerKey,
-            margin: const EdgeInsets.only(top: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: scheme.errorContainer,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              AppStrings.connectionLost,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: scheme.onErrorContainer,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-      ],
+    final left = ref.watch(gloveControllerProvider);
+    final right = ref.watch(rightGloveControllerProvider);
+    return SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(AppStrings.connectionDetails,
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          _handRow(context, AppStrings.leftHandTitle, left.phase, () => ref
+              .read(gloveControllerProvider.notifier)
+              .connect()),
+          _handRow(context, AppStrings.rightHandTitle, right.phase, () => ref
+              .read(rightGloveControllerProvider.notifier)
+              .connect()),
+        ],
+      ),
     );
   }
+
+  Widget _handRow(BuildContext context, String hand,
+      GloveConnectionPhase phase, VoidCallback onReconnect) {
+    return ListTile(
+      title: Text(hand),
+      subtitle: Text(phase.name),
+      trailing: phase == GloveConnectionPhase.ready
+          ? const Icon(Icons.check_circle, color: AppColors.success)
+          : OutlinedButton(
+              onPressed: onReconnect,
+              child: const Text(AppStrings.connectGlove),
+            ),
+    );
+  }
+}
+
+/// 40 dp banner strip with the 45° diagonal end cap (signature shape).
+class _Banner extends StatelessWidget {
+  const _Banner({
+    super.key,
+    required this.text,
+    required this.colors,
+    required this.textColor,
+  });
+
+  final String text;
+  final List<Color> colors;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipPath(
+      clipper: const _BannerCap(corner: 22),
+      child: Container(
+        height: 40,
+        margin: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: colors),
+        ),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context)
+                .textTheme
+                .labelLarge
+                ?.copyWith(color: textColor, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 45° diagonal cap on the right of the banner.
+class _BannerCap extends CustomClipper<Path> {
+  const _BannerCap({required this.corner});
+
+  final double corner;
+
+  @override
+  Path getClip(Size size) => Path()
+    ..moveTo(0, 0)
+    ..lineTo(size.width - corner, 0)
+    ..lineTo(size.width, corner)
+    ..lineTo(size.width, size.height)
+    ..lineTo(0, size.height)
+    ..close();
+
+  @override
+  bool shouldReclip(_BannerCap oldClipper) => oldClipper.corner != corner;
 }

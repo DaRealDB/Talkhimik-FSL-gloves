@@ -57,6 +57,7 @@ class HandView extends StatefulWidget {
     this.chipLabel,
     this.uncalibrated = false,
     this.stale = false,
+    this.compact = false,
   });
 
   /// Latest pose from telemetry (the view animates toward it).
@@ -74,6 +75,10 @@ class HandView extends StatefulWidget {
   /// Freezes the hand at 40 % opacity (disconnected / no frames).
   final bool stale;
 
+  /// COMPACT mode (Home preview card): no header band, smaller stage,
+  /// no fingertip chips.
+  final bool compact;
+
   @override
   State<HandView> createState() => _HandViewState();
 }
@@ -88,8 +93,9 @@ class _HandViewState extends State<HandView>
     super.initState();
     _current = widget.target;
     // Low-pass toward the target: v += (target − v) × 0.35 per tick
-    // (master §6.2). "Reduce motion" accessibility: jump straight to the
-    // target instead of animating.
+    // (master §6.2). The ticker STOPS once the pose converges and restarts
+    // when a new target arrives — no perpetual frames (tests can settle,
+    // battery friendly). "Reduce motion" jumps straight to the target.
     _ticker = createTicker((_) {
       if (!mounted) return;
       final disableAnimations = MediaQuery.disableAnimationsOf(context);
@@ -98,7 +104,27 @@ class _HandViewState extends State<HandView>
             ? widget.target
             : _current.lerpTo(widget.target, 0.35);
       });
+      if (_converged) _ticker.stop();
     })..start();
+  }
+
+  /// True when every finger and angle is within a hair of the target.
+  bool get _converged {
+    for (var i = 0; i < _current.fingerDeg.length; i++) {
+      if ((_current.fingerDeg[i] - widget.target.fingerDeg[i]).abs() > 0.05) {
+        return false;
+      }
+    }
+    return (_current.yawDeg - widget.target.yawDeg).abs() < 0.05 &&
+        (_current.rollDeg - widget.target.rollDeg).abs() < 0.05 &&
+        (_current.pitchDeg - widget.target.pitchDeg).abs() < 0.05;
+  }
+
+  @override
+  void didUpdateWidget(HandView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A new telemetry target wakes the ticker if it had converged.
+    if (!_converged && !_ticker.isActive) _ticker.start();
   }
 
   @override
@@ -115,9 +141,12 @@ class _HandViewState extends State<HandView>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        HeaderBand(title: widget.title ?? '', chipLabel: widget.chipLabel),
+        if (!widget.compact)
+          HeaderBand(
+              title: widget.title ?? '', chipLabel: widget.chipLabel),
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8),
+          margin: EdgeInsets.symmetric(
+              horizontal: widget.compact ? 0 : 8),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
@@ -134,11 +163,13 @@ class _HandViewState extends State<HandView>
                 .resolve(context, TalkhimikMotion.values.quick),
             child: RepaintBoundary(
               child: CustomPaint(
-                size: const Size(220, 220),
+                size: Size(widget.compact ? 100 : 220,
+                    widget.compact ? 100 : 220),
                 painter: HandPainter(
                   pose: _current,
                   uncalibrated: widget.uncalibrated,
                   tokens: tokens,
+                  compact: widget.compact,
                   text: TalkhimikText.of(context),
                 ),
               ),
@@ -159,6 +190,7 @@ class HandPainter extends CustomPainter {
     this.uncalibrated = false,
     required this.tokens,
     required this.text,
+    this.compact = false,
   });
 
   final HandPose pose;
@@ -167,6 +199,9 @@ class HandPainter extends CustomPainter {
 
   /// App typography styles for the badge text (never hard-coded sizes).
   final TalkhimikText text;
+
+  /// Compact mode: no fingertip badges.
+  final bool compact;
 
   static const _fingerLengths = [0.85, 1.0, 1.0, 0.9, 0.7]; // relative
   static const _baseAngles = [-38.0, -14.0, 8.0, 30.0, 52.0]; // deg from up
@@ -278,12 +313,14 @@ class HandPainter extends CustomPainter {
     canvas.restore();
 
     // Badges: drawn outside the mirror transform so text stays readable.
-    for (var i = 0; i < 5; i++) {
-      final invalid = pose.invalidMask & (1 << i) != 0;
-      var tip = tips[i];
-      if (left) tip = Offset(size.width - tip.dx, tip.dy);
-      _drawBadge(canvas, tip, _initials[i], pose.fingerDeg[i].round(),
-          invalid: invalid, uncalibrated: uncalibrated);
+    if (!compact) {
+      for (var i = 0; i < 5; i++) {
+        final invalid = pose.invalidMask & (1 << i) != 0;
+        var tip = tips[i];
+        if (left) tip = Offset(size.width - tip.dx, tip.dy);
+        _drawBadge(canvas, tip, _initials[i], pose.fingerDeg[i].round(),
+            invalid: invalid, uncalibrated: uncalibrated);
+      }
     }
   }
 

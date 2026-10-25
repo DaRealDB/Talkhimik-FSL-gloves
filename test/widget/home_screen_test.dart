@@ -152,7 +152,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.tune_outlined));
+    // Navigation (step 4): Calibration lives under the More destination;
+    // Record is a bottom-nav destination.
+    await tester.tap(find.text(AppStrings.moreTab));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(AppStrings.calibrationTitle).first);
     await tester.pumpAndSettle();
     // App bar + header band both show the title (design refresh).
     expect(find.text(AppStrings.calibrationTitle), findsNWidgets(2));
@@ -160,8 +164,9 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.fiber_manual_record_outlined));
+    await tester.tap(find.text(AppStrings.recordModeTitle).first);
     await tester.pumpAndSettle();
-    expect(find.text(AppStrings.recordModeTitle), findsNWidgets(2));
+    // App bar + header band + the bottom-nav label (3 occurrences).
+    expect(find.text(AppStrings.recordModeTitle), findsNWidgets(3));
   });
 }

@@ -14,12 +14,17 @@ class TranscriptBubble extends StatelessWidget {
     required this.entry,
     required this.language,
     required this.largeText,
+    this.hero = false,
     this.onTap,
   });
 
   final TranscriptEntry entry;
   final String language; // 'fil' | 'en'
   final bool largeText;
+
+  /// HERO treatment: the latest sign renders at display size.
+  final bool hero;
+
   final VoidCallback? onTap;
 
   @override
@@ -73,9 +78,15 @@ class TranscriptBubble extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       color: scheme.onSurface,
                     )
-                  : TalkhimikText.of(context)
-                      .transcriptWord
-                      ?.copyWith(color: scheme.onSurface),
+                  : hero
+                      // HERO: the latest recognized sign — the largest,
+                      // most legible text in the app (typography pass).
+                      ? TalkhimikText.of(context)
+                          .transcriptHero
+                          ?.copyWith(color: scheme.onSurface)
+                      : TalkhimikText.of(context)
+                          .transcriptWord
+                          ?.copyWith(color: scheme.onSurface),
             ),
             if (entry.corrected) ...[
               const SizedBox(height: 2),

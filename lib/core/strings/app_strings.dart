@@ -13,6 +13,15 @@ class AppStrings {
   // Connection and status (FR-12)
   static const mockGloveName = 'Demo glove';
   static const realGloveName = 'Real glove';
+  static const demoTag = 'Demo';
+  static const statusBothConnected = 'Both gloves connected';
+  static const statusOneConnected = 'One glove connected';
+  static const statusConnecting = 'Connecting…';
+  static const statusNotConnected = 'Not connected';
+  static const connectionDetails = 'Connection details';
+  static const uncalibratedBanner = 'Uncalibrated — calibrate now';
+  static const connectGloves = 'Connect gloves';
+  static const listening = 'Listening';
   static const connectionLost = 'Connection lost — reconnecting…';
   static const connected = 'Connected';
   static const disconnected = 'Not connected';
@@ -34,6 +43,8 @@ class AppStrings {
 
   // Live screen (master §6.1)
   static const liveTitle = 'Live';
+  static const homeTab = 'Home';
+  static const moreTab = 'More';
   static const leftHandLabel = 'L';
   static const rightHandLabel = 'R';
   static const leftHandTitle = 'Left hand';
@@ -60,6 +71,7 @@ class AppStrings {
   static const commandPrefix = 'Send:';
 
   // Transcript (FR-1, FR-3)
+  static const transcriptHeader = 'Transcript';
   static const emptyTranscript =
       'Sign a letter or phrase to begin.\n\nRecognized gestures appear here '
       'as text and speech.';

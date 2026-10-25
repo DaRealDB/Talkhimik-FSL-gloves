@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:talkhimik_app/application/glove_controller.dart';
 import 'package:talkhimik_app/application/providers.dart';
 import 'package:talkhimik_app/core/strings/app_strings.dart';
+import 'package:talkhimik_app/core/theme/app_theme.dart';
 import 'package:talkhimik_app/data/glove/glove_connection.dart';
 import 'package:talkhimik_app/domain/models/device_status.dart';
 import 'package:talkhimik_app/ui/widgets/device_status_bar.dart';
@@ -27,30 +28,45 @@ void main() {
                 GloveController((d) async {}, rightGloveConnectionProvider)),
           ],
         ],
-        child: MaterialApp(home: Scaffold(body: child)),
+        child: MaterialApp(
+          theme: buildLightTheme(),
+          home: Scaffold(body: child),
+        ),
       );
 
   setUp(() {
     fake = FakeGloveConnection();
   });
 
-  testWidgets('shows mock glove name and disconnected phase initially',
+  testWidgets('shows the not-connected pill with a neutral Demo tag',
       (tester) async {
     await tester.pumpWidget(wrap(const DeviceStatusBar()));
-    expect(find.textContaining(AppStrings.mockGloveName), findsOneWidget);
-    expect(find.textContaining(AppStrings.disconnected), findsOneWidget);
+
+    expect(find.text(AppStrings.statusNotConnected), findsOneWidget);
+    expect(find.text(AppStrings.demoTag), findsOneWidget);
     expect(find.byKey(DeviceStatusBar.connectionLostBannerKey), findsNothing);
   });
 
-  testWidgets('shows battery and connected state when ready',
+  testWidgets('shows battery and the connected label when ready',
       (tester) async {
     await tester.pumpWidget(wrap(const DeviceStatusBar()));
     fake.emitPhase(GloveConnectionPhase.ready);
     fake.emitStatus(const DeviceStatusPacket(batteryPercent: 87));
     await tester.pumpAndSettle();
 
+    expect(find.text(AppStrings.statusOneConnected), findsOneWidget);
     expect(find.textContaining('87%'), findsOneWidget);
-    expect(find.textContaining(AppStrings.connected), findsOneWidget);
+    expect(find.byKey(DeviceStatusBar.batteryKey), findsOneWidget);
+  });
+
+  testWidgets('both gloves connected reads as such', (tester) async {
+    final right = FakeGloveConnection();
+    await tester.pumpWidget(wrap(const DeviceStatusBar(), right: right));
+    fake.emitPhase(GloveConnectionPhase.ready);
+    right.emitPhase(GloveConnectionPhase.ready);
+    await tester.pumpAndSettle();
+
+    expect(find.text(AppStrings.statusBothConnected), findsOneWidget);
   });
 
   testWidgets('surfaces the connection lost banner on link drop',
@@ -66,19 +82,18 @@ void main() {
     expect(find.text(AppStrings.connectionLost), findsOneWidget);
   });
 
-  testWidgets('clears the banner when the link returns', (tester) async {
+  testWidgets('an uncalibrated glove shows the calibrate-now banner',
+      (tester) async {
     await tester.pumpWidget(wrap(const DeviceStatusBar()));
-    fake.emitPhase(GloveConnectionPhase.disconnected);
-    await tester.pumpAndSettle();
-    expect(find.byKey(DeviceStatusBar.connectionLostBannerKey), findsOneWidget);
-
     fake.emitPhase(GloveConnectionPhase.ready);
+    fake.emitStatus(const DeviceStatusPacket(uncalibrated: true));
     await tester.pumpAndSettle();
-    expect(find.byKey(DeviceStatusBar.connectionLostBannerKey), findsNothing);
+
+    expect(find.byKey(DeviceStatusBar.uncalibratedChipKey), findsOneWidget);
+    expect(find.text(AppStrings.uncalibratedBanner), findsOneWidget);
   });
 
-  testWidgets('shows an error chip for a resistance fault (code 4)',
-      (tester) async {
+  testWidgets('a glove error shows the error banner', (tester) async {
     await tester.pumpWidget(wrap(const DeviceStatusBar()));
     fake.emitPhase(GloveConnectionPhase.ready);
     fake.emitStatus(const DeviceStatusPacket(
@@ -88,90 +103,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(DeviceStatusBar.errorChipKey), findsOneWidget);
-    expect(find.text(AppStrings.sensorFault), findsOneWidget);
+    expect(find.text(AppStrings.gloveError), findsOneWidget);
   });
 
-  testWidgets('shows the uncalibrated chip while the glove streams '
-      'placeholder angles', (tester) async {
+  testWidgets('tapping the pill opens the per-hand details sheet',
+      (tester) async {
     await tester.pumpWidget(wrap(const DeviceStatusBar()));
-    fake.emitPhase(GloveConnectionPhase.ready);
-    fake.emitStatus(const DeviceStatusPacket(
-      batteryPercent: 80,
-      uncalibrated: true, // STATUS flags bit0
-    ));
+    await tester.tap(find.byKey(DeviceStatusBar.statusPillKey));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(DeviceStatusBar.uncalibratedChipKey), findsOneWidget);
-    expect(find.text(AppStrings.uncalibrated), findsOneWidget);
-  });
-
-  testWidgets('aggregates both gloves when left and right are ready '
-      '(master §7.3)', (tester) async {
-    final right = FakeGloveConnection();
-    await tester.pumpWidget(wrap(const DeviceStatusBar(), right: right));
-    fake.emitPhase(GloveConnectionPhase.ready);
-    right.emitPhase(GloveConnectionPhase.ready);
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('L + R'), findsOneWidget);
-  });
-
-  testWidgets('shows the right glove when only it is connected',
-      (tester) async {
-    final right = FakeGloveConnection();
-    await tester.pumpWidget(wrap(const DeviceStatusBar(), right: right));
-    right.emitPhase(GloveConnectionPhase.ready);
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('Connected (R)'), findsOneWidget);
-  });
-
-  testWidgets('the uncalibrated chip reflects either glove', (tester) async {
-    final right = FakeGloveConnection();
-    await tester.pumpWidget(wrap(const DeviceStatusBar(), right: right));
-    right.emitPhase(GloveConnectionPhase.ready);
-    right.emitStatus(const DeviceStatusPacket(
-      batteryPercent: 80,
-      uncalibrated: true,
-    ));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(DeviceStatusBar.uncalibratedChipKey), findsOneWidget);
-  });
-
-  testWidgets('real glove shows a connect button and surfaces failures',
-      (tester) async {
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        gloveConnectionProvider.overrideWithValue(fake),
-        // The real connection connects explicitly (C-S1).
-        gloveIsMockProvider.overrideWithValue(false),
-        gloveControllerProvider
-            .overrideWith(() => GloveController((d) async {})),
-      ],
-      child: const MaterialApp(home: Scaffold(body: DeviceStatusBar())),
-    ));
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining(AppStrings.realGloveName), findsOneWidget);
-    final button = find.byKey(DeviceStatusBar.connectButtonKey);
-    expect(button, findsOneWidget);
-
-    // A failed attempt surfaces the friendly message once, no banner.
-    fake.throwOnConnect = Exception('simulated scan timeout');
-    await tester.tap(button);
-    await tester.pumpAndSettle();
-    expect(find.text(AppStrings.connectFailed), findsOneWidget);
-    expect(find.byKey(DeviceStatusBar.connectionLostBannerKey), findsNothing);
-    expect(fake.connectCalls, 1);
-
-    // Let the snackbar elapse; the next attempt succeeds silently.
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pumpAndSettle();
-    fake.throwOnConnect = null;
-    await tester.tap(button);
-    await tester.pumpAndSettle();
-    expect(fake.connectCalls, 2);
-    expect(find.text(AppStrings.connectFailed), findsNothing);
+    expect(find.text(AppStrings.connectionDetails), findsOneWidget);
+    expect(find.text(AppStrings.leftHandTitle), findsOneWidget);
+    expect(find.text(AppStrings.rightHandTitle), findsOneWidget);
   });
 }

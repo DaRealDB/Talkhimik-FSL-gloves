@@ -5,6 +5,8 @@ import '../../application/providers.dart';
 import '../../core/constants/confidence.dart';
 import '../../core/strings/app_strings.dart';
 import '../../domain/models/transcript_entry.dart';
+import 'anim.dart';
+import 'diagonal_slab.dart';
 import 'quick_rephrase_sheet.dart';
 import 'transcript_bubble.dart';
 
@@ -41,12 +43,24 @@ class _TranscriptViewState extends ConsumerState<TranscriptView> {
     _scrollToBottom();
 
     if (transcript.entries.isEmpty) {
-      return Center(
-        child: Text(
-          AppStrings.emptyTranscript,
-          style: Theme.of(context).textTheme.bodyMedium,
-          textAlign: TextAlign.center,
-        ),
+      // Calm empty state: the diagonal slab motif plus one line of
+      // guidance (typography & motion pass).
+      return Stack(
+        children: [
+          const Positioned.fill(child: SlabBackdrop()),
+          Center(
+            child: FadeIn(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  AppStrings.emptyTranscript,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -56,13 +70,22 @@ class _TranscriptViewState extends ConsumerState<TranscriptView> {
       itemCount: transcript.entries.length,
       itemBuilder: (context, index) {
         final entry = transcript.entries[index];
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: TranscriptBubble(
-            entry: entry,
-            language: transcript.language,
-            largeText: transcript.largeText,
-            onTap: () => _onBubbleTap(context, entry),
+        // HERO treatment: the newest entry is the largest text in the
+        // app; earlier signs step down in size and fade in opacity.
+        final isNewest = index == transcript.entries.length - 1;
+        final age = transcript.entries.length - 1 - index;
+        final opacity = isNewest ? 1.0 : (age <= 2 ? 0.7 : 0.5);
+        return Opacity(
+          opacity: opacity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: TranscriptBubble(
+              entry: entry,
+              language: transcript.language,
+              largeText: transcript.largeText,
+              hero: isNewest && entry.kind == TranscriptKind.signed,
+              onTap: () => _onBubbleTap(context, entry),
+            ),
           ),
         );
       },

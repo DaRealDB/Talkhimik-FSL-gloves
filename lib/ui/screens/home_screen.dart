@@ -3,17 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
+import '../../core/theme/app_theme.dart';
+import '../../data/glove/glove_connection.dart';
 import '../../data/glove/glove_connection_factory.dart';
 import '../../data/glove/mock_glove_connection.dart';
-import '../widgets/demo_controls.dart';
+import '../../domain/models/telemetry_packet.dart';
+import '../widgets/anim.dart';
+import '../widgets/diagonal_slab.dart';
 import '../widgets/device_status_bar.dart';
-import '../widgets/header_band.dart';
+import '../widgets/hand_view.dart';
 import '../widgets/reply_panel.dart';
 import '../widgets/saved_phrases_panel.dart';
 import '../widgets/transcript_view.dart';
 
-/// Main screen: device status, transcript, reply panel, and (on dev
-/// platforms) the mock-glove demo controls (SRS FR-1…FR-4, FR-7, FR-12).
+/// Main screen (design refresh, step 4): one status pill, hero transcript,
+/// a compact live-hand preview card, one dominant action, quick replies,
+/// and the reply input. Demo controls moved to More → Developer.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -29,8 +34,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // the transcript is one tap away; a saved startup scenario then starts
     // running. NEVER on a phone: the mock must not start itself there even
     // when Force mock is on (bugfix) — there it connects explicitly.
-    // Both mock gloves connect so the Live screen demos two animated hands
-    // without hardware (master DoD).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (GloveConnectionFactory.isMobile ||
           !ref.read(gloveIsMockProvider)) {
@@ -55,57 +58,221 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final live = ref.watch(liveControllerProvider);
+    final phase = ref.watch(gloveControllerProvider).phase;
+    final isMock = ref.watch(gloveIsMockProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.appTitle),
-        centerTitle: true,
-        // Six actions on a 360 dp phone: compact density keeps the row
-        // inside the bar without dropping any tool (typography pass).
+        // ≤ 2 actions: Live preview shortcut + Settings (step 4 nav).
         actions: [
-          for (final (tooltip, icon, route) in [
-            (AppStrings.liveTitle, Icons.back_hand_outlined, '/live'),
-            (AppStrings.clearTranscript, Icons.delete_sweep_outlined, null),
-            (AppStrings.calibrationTitle, Icons.tune_outlined, '/calibration'),
-            (AppStrings.recordModeTitle, Icons.fiber_manual_record_outlined,
-                '/collect'),
-            ('Session logs', Icons.file_download_outlined, '/export'),
-            ('Settings', Icons.settings_outlined, '/settings'),
-          ])
-            IconButton(
-              tooltip: tooltip,
-              visualDensity: VisualDensity.compact,
-              icon: Icon(icon),
-              onPressed: () {
-                if (route != null) {
-                  Navigator.of(context).pushNamed(route);
-                } else {
-                  ref.read(transcriptControllerProvider.notifier).clear();
-                }
-              },
-            ),
+          IconButton(
+            tooltip: AppStrings.liveTitle,
+            icon: const Icon(Icons.back_hand_outlined),
+            onPressed: () => Navigator.of(context).pushNamed('/live'),
+          ),
+          IconButton(
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).pushNamed('/settings'),
+          ),
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-              child: DeviceStatusBar(),
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(12, 6, 12, 0),
-              child: DemoControls(),
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
-              child: HeaderBand(title: 'Transcript'),
-            ),
-            Expanded(
-              child: TranscriptView(),
-            ),
-            const SavedPhrasesPanel(),
-            const ReplyPanel(),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 840;
+            final content = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: DeviceStatusBar(),
+                ),
+                // Compact live-hand preview card: the signature feature on
+                // the main screen (glass, tap → Live). Hidden on very
+                // short viewports so the transcript/input never overflow.
+                if (phase == GloveConnectionPhase.ready &&
+                    constraints.maxHeight > 560)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: FadeIn(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () =>
+                            Navigator.of(context).pushNamed('/live'),
+                        child: Container(
+                          height: 110,
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppColors.tintSky,
+                                Colors.white,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant),
+                          ),
+                          child: Stack(
+                            children: [
+                              // Decorative slab behind the hand.
+                              const Positioned.fill(
+                                child: SlabBackdrop(variant: 2),
+                              ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: HandView(
+                                      compact: true,
+                                      target: HandPose(
+                                        fingerDeg: [
+                                          for (var i = 0; i < 5; i++)
+                                            (live.left.telemetry
+                                                        ?.angles[i] ??
+                                                    0)
+                                                .toDouble(),
+                                        ],
+                                        handedness: GloveHand.left,
+                                        invalidMask:
+                                            live.left.telemetry?.validMask ??
+                                                0,
+                                      ),
+                                      stale:
+                                          live.left.isStaleAt(DateTime.now()),
+                                      uncalibrated: live.left.uncalibrated,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: HandView(
+                                      compact: true,
+                                      target: HandPose(
+                                        fingerDeg: [
+                                          for (var i = 0; i < 5; i++)
+                                            (live.right.telemetry
+                                                        ?.angles[i] ??
+                                                    0)
+                                                .toDouble(),
+                                        ],
+                                        handedness: GloveHand.right,
+                                        invalidMask:
+                                            live.right.telemetry
+                                                    ?.validMask ??
+                                                0,
+                                      ),
+                                      stale: live.right
+                                          .isStaleAt(DateTime.now()),
+                                      uncalibrated:
+                                          live.right.uncalibrated,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      // Soft hero gradient + diagonal slabs behind the
+                      // transcript header zone (decorative only).
+                      const Positioned.fill(
+                        child: IgnorePointer(child: SlabBackdrop()),
+                      ),
+                      Column(
+                        children: [
+                          // Slim transcript header: a label + the one
+                          // existing action (Clear) — no full-width band.
+                          Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 4, 8, 0),
+                            child: Row(
+                              children: [
+                                Text(
+                                  AppStrings.transcriptHeader,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelMedium
+                                      ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant),
+                                ),
+                                const Spacer(),
+                                IconButton(
+                                  tooltip: AppStrings.clearTranscript,
+                                  visualDensity:
+                                      VisualDensity.compact,
+                                  icon: const Icon(
+                                      Icons.delete_sweep_outlined),
+                                  onPressed: () => ref
+                                      .read(
+                                          transcriptControllerProvider
+                                              .notifier)
+                                      .clear(),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(child: TranscriptView()),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (isMock)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: SavedPhrasesPanel(),
+                  ),
+                // ONE dominant action, thumb zone: connect both gloves;
+                // when connected it settles into a quiet "Listening" pill
+                // (no new behavior — existing connect actions only).
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: phase == GloveConnectionPhase.ready
+                      ? FilledButton.icon(
+                          icon: const Icon(Icons.graphic_eq, size: 18),
+                          label: const Text(AppStrings.listening),
+                          onPressed: null,
+                        )
+                      : FilledButton.icon(
+                          key: DeviceStatusBar.connectButtonKey,
+                          icon: const Icon(Icons.bluetooth_searching),
+                          label: const Text(AppStrings.connectGloves),
+                          onPressed: () async {
+                            await ref
+                                .read(gloveControllerProvider.notifier)
+                                .connect();
+                            await ref
+                                .read(
+                                    rightGloveControllerProvider.notifier)
+                                .connect();
+                          },
+                        ),
+                ),
+                const ReplyPanel(),
+              ],
+            );
+            // Wide: cap content at ~720 dp, centered.
+            if (!wide) return content;
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: content,
+              ),
+            );
+          },
         ),
       ),
     );
