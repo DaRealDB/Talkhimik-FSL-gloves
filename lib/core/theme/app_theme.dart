@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'motion.dart';
+
 /// Talkhimik design tokens (approved 2026-10, "simplify + refresh" pass) —
 /// Pokémon GO Hub-style: brand green surfaces, olive-lime header bands with
 /// a deep-green diagonal corner, warm-gray page, light rounded cards, pill
@@ -264,7 +266,7 @@ ThemeData _base(ColorScheme scheme, TalkhimikTokens tokens) => ThemeData(
       fontFamily: 'Inter',
       textTheme: _buildTextTheme(scheme.onSurface),
       useMaterial3: true,
-      extensions: [tokens, _buildTalkhimikText()],
+      extensions: [tokens, _buildTalkhimikText(), TalkhimikMotion.values],
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,
