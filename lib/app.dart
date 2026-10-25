@@ -6,6 +6,7 @@ import 'ui/screens/calibration_screen.dart';
 import 'ui/screens/collect_screen.dart';
 import 'ui/screens/export_screen.dart';
 import 'ui/screens/home_screen.dart';
+import 'ui/screens/live_screen.dart';
 import 'ui/screens/settings_screen.dart';
 
 class TalkhimikApp extends StatelessWidget {
@@ -22,6 +23,7 @@ class TalkhimikApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       home: const HomeScreen(),
       routes: {
+        '/live': (_) => const LiveScreen(),
         '/settings': (_) => const SettingsScreen(),
         '/export': (_) => const ExportScreen(),
         '/calibration': (_) => const CalibrationScreen(),

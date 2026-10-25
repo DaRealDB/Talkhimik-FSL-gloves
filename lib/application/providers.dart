@@ -20,6 +20,7 @@ import 'calibration_controller.dart';
 import 'data_collection_controller.dart';
 import 'export_controller.dart';
 import 'glove_controller.dart';
+import 'live_controller.dart';
 import 'settings_controller.dart';
 import 'transcript_controller.dart';
 import 'tts_controller.dart';
@@ -69,6 +70,10 @@ final gloveIsMockProvider = Provider<bool>(
 
 final gloveControllerProvider =
     NotifierProvider<GloveController, GloveState>(GloveController.new);
+
+/// Both gloves' live snapshots for the /live screen (master §6.1).
+final liveControllerProvider =
+    NotifierProvider<LiveController, LiveState>(LiveController.new);
 
 final appVersionProvider = Provider<String>((ref) => kAppVersion);
 

@@ -1,0 +1,244 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../application/providers.dart';
+import '../../core/strings/app_strings.dart';
+import '../../data/glove/glove_connection.dart';
+import '../../domain/models/calibration_table.dart';
+import '../../domain/models/hand_state.dart';
+import '../../domain/models/telemetry_packet.dart';
+import '../../domain/sensing/sensor_math.dart';
+import '../widgets/connection_badges.dart';
+import '../widgets/finger_bar.dart';
+import '../widgets/hand_view.dart';
+import '../widgets/imu_tiles.dart';
+
+/// Live per-hand telemetry view (master §6.1): animated hands, angle bars,
+/// raw ADC + Ω details, IMU tiles, health badges, zero-yaw/vibrate, and the
+/// calibration chip. Two hands side by side on wide screens, tabbed L/R on
+/// phones.
+class LiveScreen extends ConsumerStatefulWidget {
+  const LiveScreen({super.key});
+
+  @override
+  ConsumerState<LiveScreen> createState() => _LiveScreenState();
+}
+
+class _LiveScreenState extends ConsumerState<LiveScreen>
+    with SingleTickerProviderStateMixin {
+  DateTime _now = DateTime.now();
+
+  late final Ticker _clock = createTicker((_) {
+    // Freshness/stale badges re-evaluate on a frame clock.
+    if (mounted) setState(() => _now = DateTime.now());
+  });
+
+  @override
+  void initState() {
+    super.initState();
+    _clock.start();
+  }
+
+  @override
+  void dispose() {
+    _clock.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final live = ref.watch(liveControllerProvider);
+    return Scaffold(
+      appBar: AppBar(title: const Text(AppStrings.liveTitle)),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 700;
+          if (wide) {
+            return Row(
+              children: [
+                Expanded(
+                    child: _HandPanel(hand: live.left, now: _now)),
+                const VerticalDivider(width: 1),
+                Expanded(
+                    child: _HandPanel(hand: live.right, now: _now)),
+              ],
+            );
+          }
+          return DefaultTabController(
+            length: 2,
+            child: Column(
+              children: [
+                const TabBar(tabs: [
+                  Tab(text: AppStrings.leftHandLabel),
+                  Tab(text: AppStrings.rightHandLabel),
+                ]),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _HandPanel(hand: live.left, now: _now),
+                      _HandPanel(hand: live.right, now: _now),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// One hand's full column: hand view, bars, details, tiles, badges, actions.
+class _HandPanel extends ConsumerWidget {
+  const _HandPanel({required this.hand, required this.now});
+
+  final HandState hand;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = hand.telemetry;
+    final calId = t?.calibrationId ?? hand.calInfo?.calibrationId;
+    final table = hand.calInfo == null ? null : CalibrationTable(hand.calInfo!);
+    // Per-finger weak spans come from the CAL_INFO weak mask (§4.3).
+    final weakMask = table?.packet.weakMask ?? 0;
+    final scheme = Theme.of(context).colorScheme;
+
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: HandView(
+                target: HandPose(
+                  fingerDeg: [
+                    for (var i = 0; i < 5; i++)
+                      (t?.angles[i] ?? 0).toDouble(),
+                  ],
+                  rollDeg: t?.rollDeg ?? 0,
+                  pitchDeg: t?.pitchDeg ?? 0,
+                  yawDeg: t?.yawDeg ?? 0,
+                  handedness: hand.hand,
+                  invalidMask: t?.validMask ?? 0,
+                ),
+                uncalibrated: hand.uncalibrated,
+                stale: hand.isStaleAt(now),
+                label: hand.hand == GloveHand.left
+                    ? AppStrings.leftHandLabel
+                    : AppStrings.rightHandLabel,
+              ),
+            ),
+          ],
+        ),
+        ConnectionBadges(hand: hand, now: now),
+        const SizedBox(height: 8),
+        if (hand.uncalibrated)
+          Chip(
+            label: const Text(AppStrings.uncalibrated),
+            backgroundColor: scheme.errorContainer,
+          )
+        else if (calId != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ActionChip(
+              label: Text('cal_id $calId'
+                  '${table != null ? ' · fw ${table.firmwareVersion}' : ''}'),
+              onPressed: () =>
+                  Navigator.of(context).pushNamed('/calibration'),
+            ),
+          ),
+        const SizedBox(height: 8),
+        for (var i = 0; i < fingerNames.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: FingerBar(
+              name: fingerNames[i],
+              angleDeg: (t?.angles[i] ?? 0).toDouble(),
+              invalid: t != null && t.validMask & (1 << i) == 0,
+              weak: weakMask & (1 << i) != 0,
+            ),
+          ),
+        const SizedBox(height: 8),
+        if (t != null) ...[
+          ImuTiles(
+            rollDeg: t.rollDeg,
+            pitchDeg: t.pitchDeg,
+            yawDeg: t.yawDeg,
+          ),
+          const SizedBox(height: 8),
+          _Details(t: t, table: table),
+        ] else
+          Text(AppStrings.noFramesYet,
+              style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.explore_off, size: 16),
+              label: const Text(AppStrings.zeroYaw),
+              onPressed: () => _connectionFor(ref).sendCommand(
+                  AppCommand.zeroYaw),
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.vibration, size: 16),
+              label: const Text(AppStrings.vibrateTest),
+              onPressed: () => _connectionFor(ref).sendCommand(
+                  AppCommand.vibrate, value: 300),
+            ),
+            FilledButton.tonalIcon(
+              icon: const Icon(Icons.fiber_manual_record_outlined, size: 16),
+              label: const Text(AppStrings.recordModeTitle),
+              onPressed: () =>
+                  Navigator.of(context).pushNamed('/collect'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// The connection that owns this panel's glove.
+  GloveConnection _connectionFor(WidgetRef ref) =>
+      ref.read(hand.hand == GloveHand.left
+          ? gloveConnectionProvider
+          : rightGloveConnectionProvider);
+}
+
+/// Collapsible raw ADC + recomputed Ω per finger (master §6.1).
+class _Details extends StatelessWidget {
+  const _Details({required this.t, required this.table});
+
+  final TelemetryPacket t;
+  final CalibrationTable? table;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTile(
+      title: Text(AppStrings.details,
+          style: Theme.of(context).textTheme.titleSmall),
+      children: [
+        for (var i = 0; i < fingerNames.length; i++)
+          ListTile(
+            dense: true,
+            title: Text(fingerNames[i]),
+            subtitle: Text(
+              '${AppStrings.rawAdc}: ${t.rawAdc[i]}'
+              ' · ${AppStrings.resistanceOhm}: '
+              '${_ohms(i).toStringAsFixed(0)}',
+            ),
+          ),
+      ],
+    );
+  }
+
+  double _ohms(int i) {
+    final finger = table?.finger(i);
+    final rDiv = finger?.rDiv ?? 10000;
+    return adcToOhms(rDiv, t.rawAdc[i]);
+  }
+}

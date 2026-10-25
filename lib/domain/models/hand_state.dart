@@ -16,6 +16,8 @@ class HandState {
     this.receivedFrames = 0,
     this.lostFrames = 0,
     this.lastFrameAt,
+    this.updateRateHz = 0,
+    this.handMismatch = false,
   });
 
   /// Which glove this state tracks; the telemetry `hand` byte must agree
@@ -35,6 +37,13 @@ class HandState {
   /// Phone clock at the last telemetry frame (freshness source).
   final DateTime? lastFrameAt;
 
+  /// Frames received in the trailing second (≈ frames/s, master §6.1).
+  final double updateRateHz;
+
+  /// True when a telemetry `hand` byte disagrees with this glove's name;
+  /// the data is trusted, the badge warns (master §7.3).
+  final bool handMismatch;
+
   bool get uncalibrated => status?.uncalibrated ?? false;
 
   double get packetLossPercent =>
@@ -53,6 +62,8 @@ class HandState {
     int? receivedFrames,
     int? lostFrames,
     DateTime? lastFrameAt,
+    double? updateRateHz,
+    bool? handMismatch,
   }) =>
       HandState(
         hand: hand ?? this.hand,
@@ -62,5 +73,7 @@ class HandState {
         receivedFrames: receivedFrames ?? this.receivedFrames,
         lostFrames: lostFrames ?? this.lostFrames,
         lastFrameAt: lastFrameAt ?? this.lastFrameAt,
+        updateRateHz: updateRateHz ?? this.updateRateHz,
+        handMismatch: handMismatch ?? this.handMismatch,
       );
 }

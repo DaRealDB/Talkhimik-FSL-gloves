@@ -53,6 +53,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         centerTitle: true,
         actions: [
           IconButton(
+            tooltip: AppStrings.liveTitle,
+            icon: const Icon(Icons.back_hand_outlined),
+            onPressed: () => Navigator.of(context).pushNamed('/live'),
+          ),
+          IconButton(
             tooltip: AppStrings.clearTranscript,
             icon: const Icon(Icons.delete_sweep_outlined),
             onPressed: () =>

@@ -32,6 +32,24 @@ class AppStrings {
       'Could not connect to the glove. Check that it is powered on and '
       'nearby.';
 
+  // Live screen (master §6.1)
+  static const liveTitle = 'Live';
+  static const leftHandLabel = 'L';
+  static const rightHandLabel = 'R';
+  static const freshness = 'Freshness';
+  static const stale = 'Stale';
+  static const packetLoss = 'Packet loss';
+  static const updateRate = 'Update rate';
+  static const battery = 'Battery';
+  static const details = 'Details';
+  static const rawAdc = 'Raw ADC';
+  static const resistanceOhm = 'Resistance (Ω)';
+  static const zeroYaw = 'Zero yaw';
+  static const vibrateTest = 'Vibrate';
+  static const weakSignal = 'Weak signal';
+  static const handMismatchWarning = 'Hand mismatch — check glove name';
+  static const noFramesYet = 'No frames yet';
+
   // Demo controls (dev-only)
   static const demoControlsTitle = 'Demo controls (mock glove)';
   static const stopScenario = 'Stop';
