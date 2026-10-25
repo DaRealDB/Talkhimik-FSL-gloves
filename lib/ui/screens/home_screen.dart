@@ -26,11 +26,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Demo convenience: on dev platforms the mock glove auto-connects so
     // the transcript is one tap away; a saved startup scenario then starts
     // running. The real glove requires a permission flow (C-S1) and
-    // connects explicitly.
+    // connects explicitly. Both mock gloves connect so the Live screen
+    // demos two animated hands without hardware (master DoD).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!ref.read(gloveIsMockProvider)) return;
       final gloveController = ref.read(gloveControllerProvider.notifier);
       await gloveController.connect();
+      await ref.read(rightGloveControllerProvider.notifier).connect();
       if (!mounted) return;
       final scenarioName =
           await ref.read(settingsServiceProvider).demoScenario();

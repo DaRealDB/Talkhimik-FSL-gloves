@@ -5,6 +5,7 @@ import 'package:talkhimik_app/data/glove/mock_glove_connection.dart';
 import 'package:talkhimik_app/data/storage/calinfo_cache.dart';
 import 'package:talkhimik_app/data/storage/settings_service.dart';
 import 'package:talkhimik_app/data/tts/tts_service.dart';
+import 'package:talkhimik_app/domain/models/telemetry_packet.dart';
 import 'package:talkhimik_app/domain/repositories/log_store.dart';
 
 import 'fake_tts_service.dart';
@@ -35,6 +36,17 @@ List<Override> testOverrides({
                 telemetryEnabled: false,
               ),
             ),
+      ),
+      // The home screen auto-connects both mocks — the right hand needs
+      // the same deterministic, telemetry-free mock.
+      rightGloveConnectionProvider.overrideWithValue(
+        MockGloveConnection(
+          config: const MockGloveConfig(
+            connectStepDelay: Duration.zero,
+            telemetryEnabled: false,
+          ),
+          hand: GloveHand.right,
+        ),
       ),
       gloveIsMockProvider.overrideWithValue(gloveIsMock ?? true),
       logStoreProvider.overrideWithValue(logStore ?? InMemoryLogStore()),
