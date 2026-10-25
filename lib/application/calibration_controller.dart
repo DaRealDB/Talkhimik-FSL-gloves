@@ -133,13 +133,15 @@ class CalibrationController extends Notifier<CalibrationState> {
         state.step == 0) {
       return;
     }
-    await _connection!.sendCommand(
-        state.isFlatStep ? AppCommand.captureFlat : AppCommand.capture90);
+    // Set the flag BEFORE the send: the STATUS reply may deliver on a
+    // microtask before the await returns, and its copyWith must win.
     state = state.copyWith(capturePending: true, error: null);
     _captureTimeout?.cancel();
     _captureTimeout = Timer(const Duration(milliseconds: 1500), () {
       state = state.copyWith(capturePending: false);
     });
+    await _connection!.sendCommand(
+        state.isFlatStep ? AppCommand.captureFlat : AppCommand.capture90);
   }
 
   /// CANCEL (0x04): discards the in-progress run; the previous profile

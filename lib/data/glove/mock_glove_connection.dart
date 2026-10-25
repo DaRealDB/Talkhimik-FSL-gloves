@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:math' as math;
 
 import '../../domain/models/cal_info_packet.dart';
 import '../../domain/models/device_status.dart';
@@ -28,6 +28,9 @@ class MockGloveConfig {
     this.disconnectAfter = const Duration(seconds: 20),
     this.reconnectDelay = const Duration(seconds: 5),
     this.batteryStartPercent = 100,
+    this.telemetryEnabled = true,
+    this.telemetryRate = const Duration(milliseconds: 50),
+    this.lossBurstEvery = const Duration(seconds: 7),
   });
 
   final Duration gestureCadence;
@@ -35,6 +38,16 @@ class MockGloveConfig {
   final Duration disconnectAfter;
   final Duration reconnectDelay;
   final int batteryStartPercent;
+
+  /// Whether the mock streams telemetry after connect (master Phase 6);
+  /// widget tests disable it to keep their timers deterministic.
+  final bool telemetryEnabled;
+
+  /// Telemetry notify period (mirrors the firmware's 50 ms).
+  final Duration telemetryRate;
+
+  /// A seq-gap burst (~5 lost frames) every 7 s, like the dashboard's demo.
+  final Duration lossBurstEvery;
 }
 
 /// Simulated glove — the development/demo/testing harness that stands in
@@ -42,19 +55,27 @@ class MockGloveConfig {
 /// throwaway: the mock is how the panel demo runs and how widget tests
 /// exercise every FR without a real device.
 ///
-/// The mock models the PRODUCTION glove (label packets over [gestureResults])
-/// rather than the telemetry-stage firmware, so the transcript pipeline is
-/// fully exercisable; its [deviceStatus] follows the firmware STATUS layout.
+/// The mock models BOTH gloves: label packets over [gestureResults] (the
+/// production stage; the transcript is bound to it) and, when
+/// [MockGloveConfig.telemetryEnabled], the firmware contract — 29-byte
+/// telemetry with moving fingers/IMU, STATUS-driven calibration wizard
+/// (steps 1→10, forced errors 3/4, incrementing calibration_id), CAL_INFO
+/// notifies, and a periodic loss burst (master Phase 6).
 class MockGloveConnection implements GloveConnection {
   MockGloveConnection({
     MockGloveConfig config = const MockGloveConfig(),
     DateTime Function()? clock,
+    this.hand = GloveHand.left,
   })  : _config = config,
         _clock = clock ?? DateTime.now,
         _battery = config.batteryStartPercent;
 
   final MockGloveConfig _config;
   final DateTime Function() _clock;
+
+  /// Which glove this mock simulates (master §7.3); the telemetry `hand`
+  /// byte carries it.
+  final GloveHand hand;
 
   final _gestures = StreamController<GestureResultPacket>.broadcast();
   final _telemetry = StreamController<TelemetryPacket>.broadcast();
@@ -73,13 +94,23 @@ class MockGloveConnection implements GloveConnection {
   Timer? _scenarioTimer;
   Timer? _disconnectTimer;
   Timer? _reconnectTimer;
+  Timer? _telemetryTimer;
+  Timer? _lossBurstTimer;
   MockScenario? _activeScenario;
   List<int> _script = const [];
   int _scriptIndex = 0;
   int _confidencePatternIndex = 0;
 
+  // Firmware-contract emulation (master Phase 6).
+  int _seq = 0;
+  double _animTime = 0;
+  int _calId = 0;
+  int _calStep = 0;
+  bool _calibrating = false;
+  int? _forcedCalError;
+
   /// Seeded for deterministic tests; the interactive demo doesn't care.
-  final Random _random = Random(42);
+  final math.Random _random = math.Random(42);
 
   @override
   Stream<GestureResultPacket> get gestureResults => _gestures.stream;
@@ -110,21 +141,36 @@ class MockGloveConnection implements GloveConnection {
     await Future<void>.delayed(_config.connectStepDelay);
     _setPhase(GloveConnectionPhase.ready);
     _emitStatus();
+    _emitCalInfo();
+    if (_config.telemetryEnabled) _startTelemetry();
   }
 
   /// Stateless glove: the exact same path as [connect] (C-F7).
   @override
   Future<void> reconnect() => connect();
 
+  /// Makes the NEXT capture fail with firmware error 3 (span reject, stays
+  /// on the step) or 4 (resistance fault, advances) — master §4.3 tests.
+  void forceCalibrationError(int code) => _forcedCalError = code;
+
+  /// The mock's current calibration id (assertion aid).
+  int get calibrationId => _calId;
+
   @override
   Future<void> sendCommand(AppCommand command, {int value = 0}) async {
     commandLog.add(command);
     switch (command) {
       case AppCommand.startCalibration:
-      case AppCommand.captureFlat:
-      case AppCommand.capture90:
+        _calibrating = true;
+        _calStep = 1;
         _mode = GloveMode.calibrating;
+      case AppCommand.captureFlat:
+        if (_calibrating) _capture(isFlat: true);
+      case AppCommand.capture90:
+        if (_calibrating) _capture(isFlat: false);
       case AppCommand.cancelCalibration:
+        _calibrating = false;
+        _calStep = 0;
         _mode = GloveMode.streaming;
       case AppCommand.setRate:
       case AppCommand.zeroYaw:
@@ -135,9 +181,94 @@ class MockGloveConnection implements GloveConnection {
     _emitStatus();
   }
 
+  /// One wizard capture (master §4.2): a forced error fires once, then the
+  /// step advances; after step 10 the profile is saved with a bumped
+  /// calibration_id and CAL_INFO is pushed.
+  void _capture({required bool isFlat}) {
+    final forced = _forcedCalError;
+    if (forced != null) {
+      _forcedCalError = null;
+      _lastError = forced;
+      if (forced == 4) {
+        _calStep++; // resistance fault: firmware marks + advances
+        if (_calStep > 10) _completeCalibration();
+      }
+      return;
+    }
+    _lastError = null;
+    _calStep++;
+    if (_calStep > 10) _completeCalibration();
+  }
+
+  void _completeCalibration() {
+    _calibrating = false;
+    _calStep = 0;
+    _mode = GloveMode.streaming;
+    _calId++;
+    _emitCalInfo();
+  }
+
+  /// CAL_INFO mirror of the mock's (simulated) NVS profile.
+  void _emitCalInfo() {
+    _calInfo.add(CalInfoPacket(
+      validMask: 0x1F,
+      weakMask: 0,
+      calibrationId: _calId,
+      flatOhm: const [30000, 30000, 30000, 30000, 30000],
+      bent90Ohm: const [60000, 60000, 60000, 60000, 60000],
+      flatAdc: const [500, 500, 500, 500, 500],
+      bent90Adc: const [1500, 1500, 1500, 1500, 1500],
+      rDiv: const [10000, 10000, 10000, 10000, 10000],
+      spanCounts: const [1000, 1000, 1000, 1000, 1000],
+      firmwareVersion: '1.2.0',
+    ));
+  }
+
+  void _startTelemetry() {
+    _telemetryTimer?.cancel();
+    _telemetryTimer =
+        Timer.periodic(_config.telemetryRate, (_) => _emitTelemetry());
+    if (_config.lossBurstEvery > Duration.zero) {
+      _lossBurstTimer?.cancel();
+      _lossBurstTimer = Timer.periodic(_config.lossBurstEvery,
+          (_) => _seq += 6); // ~5 lost frames, like the dashboard demo
+    }
+  }
+
+  /// One 29-byte-equivalent telemetry frame with animated fingers/IMU.
+  void _emitTelemetry() {
+    _seq++;
+    _animTime += _config.telemetryRate.inMilliseconds / 1000.0;
+    final angles = [
+      for (var i = 0; i < 5; i++)
+        ((45 + 40 * math.sin(_animTime * 2 + i * 0.7)).clamp(0.0, 90.0))
+            .round(),
+    ];
+    _telemetry.add(TelemetryPacket(
+      hand: hand,
+      seq: _seq,
+      angles: angles,
+      rollDeg: 15 * math.sin(_animTime * 0.8),
+      pitchDeg: 10 * math.sin(_animTime * 1.1),
+      yawDeg: 20 * math.sin(_animTime * 0.5),
+      rawAdc: [100, 200, 300, 400, 500],
+      calibrationId: _calId,
+      quality: 0x1F,
+      receivedAt: _clock(),
+    ));
+  }
+
+  void _stopTelemetry() {
+    _telemetryTimer?.cancel();
+    _telemetryTimer = null;
+    _lossBurstTimer?.cancel();
+    _lossBurstTimer = null;
+  }
+
   @override
   Future<void> disconnect() async {
     stopScenario();
+    _stopTelemetry();
     _setPhase(GloveConnectionPhase.disconnected);
   }
 
@@ -192,7 +323,7 @@ class MockGloveConnection implements GloveConnection {
         // no low-battery error code).
         _battery = _config.batteryStartPercent;
         _scenarioTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-          _battery = max(12, _battery - 2);
+          _battery = math.max(12, _battery - 2);
           _emitStatus();
           if (_battery <= 12) stopScenario();
         });
@@ -254,6 +385,7 @@ class MockGloveConnection implements GloveConnection {
     _status.add(DeviceStatusPacket(
       batteryPercent: _battery,
       mode: _mode,
+      calibrationStep: _calStep,
       linkUp: _phase == GloveConnectionPhase.ready,
       lastErrorCode: _lastError,
     ));
@@ -268,6 +400,7 @@ class MockGloveConnection implements GloveConnection {
   void dispose() {
     stopScenario();
     _stopReconnectTimer();
+    _stopTelemetry();
     _gestures.close();
     _telemetry.close();
     _status.close();

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:talkhimik_app/data/glove/mock_glove_connection.dart';
@@ -17,6 +17,7 @@ void main() {
     final glove = MockGloveConnection(
       config: const MockGloveConfig(
         connectStepDelay: Duration.zero,
+      telemetryEnabled: false,
         gestureCadence: Duration(milliseconds: 10),
       ),
     );
@@ -82,6 +83,7 @@ void main() {
     final glove = MockGloveConnection(
       config: const MockGloveConfig(
         connectStepDelay: Duration.zero,
+      telemetryEnabled: false,
         gestureCadence: Duration(milliseconds: 10),
       ),
     );

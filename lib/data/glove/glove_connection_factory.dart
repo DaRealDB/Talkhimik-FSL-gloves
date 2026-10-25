@@ -39,5 +39,5 @@ class GloveConnectionFactory {
   }) =>
       (onMobile && !forceMock)
           ? FlutterBlueGloveConnection(hand: hand)
-          : MockGloveConnection();
+          : MockGloveConnection(hand: hand);
 }

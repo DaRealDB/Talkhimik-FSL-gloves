@@ -30,6 +30,9 @@ List<Override> testOverrides({
               config: const MockGloveConfig(
                 connectStepDelay: Duration.zero,
                 gestureCadence: Duration(milliseconds: 10),
+                // Widget tests keep timers deterministic: no telemetry
+                // engine unless a test opts in.
+                telemetryEnabled: false,
               ),
             ),
       ),

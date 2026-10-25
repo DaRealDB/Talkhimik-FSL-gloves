@@ -18,6 +18,9 @@ void main() {
       config: const MockGloveConfig(
         connectStepDelay: Duration.zero,
         gestureCadence: Duration(milliseconds: 10),
+        // This test covers the transcript path; telemetry stays off so no
+        // periodic timers outlive the widget tree.
+        telemetryEnabled: false,
       ),
     );
     final tts = FakeTtsService();

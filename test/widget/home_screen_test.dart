@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:talkhimik_app/app.dart';
@@ -35,6 +35,7 @@ void main() {
       config: const MockGloveConfig(
         connectStepDelay: Duration.zero,
         gestureCadence: Duration(milliseconds: 10),
+        telemetryEnabled: false,
       ),
     );
     await tester.pumpWidget(
@@ -82,6 +83,7 @@ void main() {
       config: const MockGloveConfig(
         connectStepDelay: Duration.zero,
         gestureCadence: Duration(milliseconds: 10),
+        telemetryEnabled: false,
       ),
     );
     final logStore = InMemoryLogStore();
@@ -111,6 +113,7 @@ void main() {
       config: const MockGloveConfig(
         connectStepDelay: Duration.zero,
         gestureCadence: Duration(milliseconds: 10),
+        telemetryEnabled: false,
       ),
     );
     final tts = FakeTtsService();
