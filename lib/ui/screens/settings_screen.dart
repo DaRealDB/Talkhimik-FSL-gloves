@@ -132,25 +132,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onChanged: (v) => settingsController.setIsMinor(v),
           ),
           const SizedBox(height: 16),
-          _section(context, 'Demo (development)'),
-          SwitchListTile(
-            title: const Text('Force mock glove'),
-            subtitle: const Text('Applies after restart; field-testing aid'),
-            value: participant.forceMock,
-            onChanged: (v) => settingsController.setForceMock(v),
-          ),
-          ListTile(
-            title: const Text('Startup demo scenario'),
-            trailing: DropdownButton<String?>(
-              value: participant.demoScenario,
-              hint: const Text('None'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('None')),
-                for (final s in MockScenario.values)
-                  DropdownMenuItem(value: s.name, child: Text(s.label)),
-              ],
-              onChanged: (v) => settingsController.setDemoScenario(v),
-            ),
+          // Dev flags are tucked away so a signer/researcher never sees
+          // them unless they go looking (simplify pass).
+          ExpansionTile(
+            title: Text('Developer',
+                style: Theme.of(context).textTheme.titleSmall),
+            tilePadding: EdgeInsets.zero,
+            children: [
+              SwitchListTile(
+                title: const Text('Force mock glove'),
+                subtitle: const Text('Swaps the connection live; '
+                    'field-testing aid'),
+                value: participant.forceMock,
+                onChanged: (v) => settingsController.setForceMock(v),
+              ),
+              ListTile(
+                title: const Text('Startup demo scenario'),
+                trailing: DropdownButton<String?>(
+                  value: participant.demoScenario,
+                  hint: const Text('None'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('None')),
+                    for (final s in MockScenario.values)
+                      DropdownMenuItem(value: s.name, child: Text(s.label)),
+                  ],
+                  onChanged: (v) => settingsController.setDemoScenario(v),
+                ),
+              ),
+            ],
           ),
         ],
       ),
