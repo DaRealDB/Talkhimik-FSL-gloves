@@ -17,9 +17,10 @@ class TalkhimikApp extends StatelessWidget {
     return MaterialApp(
       title: AppStrings.appTitle,
       theme: buildLightTheme(),
-      // Dark-first per the design decisions; light remains selectable.
+      // Light is the primary theme (design refresh); dark remains
+      // selectable via the same hue family.
       darkTheme: buildDarkTheme(),
-      themeMode: ThemeMode.dark,
+      themeMode: ThemeMode.light,
       debugShowCheckedModeBanner: false,
       home: const HomeScreen(),
       routes: {
