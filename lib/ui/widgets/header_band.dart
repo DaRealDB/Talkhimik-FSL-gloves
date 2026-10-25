@@ -24,6 +24,7 @@ class HeaderBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final band = ClipPath(
       // 45° diagonal end cap on the right (the logo's slab language).
       clipper: const _DiagonalEndCap(corner: 26),
@@ -68,8 +69,8 @@ class HeaderBand extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: Color.lerp(Colors.white,
-                                AppColors.tintSky, t.value),
+                            color: Color.lerp(
+                                scheme.surface, AppColors.tintSky, t.value),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(

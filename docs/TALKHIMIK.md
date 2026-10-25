@@ -318,7 +318,8 @@ Source of truth: `lib/core/theme/` — `AppColors` + `TalkhimikTokens` +
 signature blues — **sky `#54C5F8`, azure `#29B6F6`, navy `#01579B`** — on a
 clean white field with crisp 45° diagonal slabs (`DiagonalSlab` /
 `SlabBackdrop`) and a soft fold shadow where navy meets azure. LIGHT is the
-primary theme; dark derives from the navy (`#06182B` / `#0C2540`).
+primary theme; dark derives from the navy (`#06182B` / `#0C2540`) and
+**follows the device setting** (`ThemeMode.system`).
 
 **Rules baked in (AA):** sky and azure are fills only (≈1.9:1 / ≈2.3:1 on
 white) — text on them is navy (`#0B2540`, 5.9:1). Cards/inputs carry the

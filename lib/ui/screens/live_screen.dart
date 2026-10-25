@@ -114,10 +114,10 @@ class _HandPanel extends ConsumerWidget {
         // Glass stage with the diagonal slab backdrop behind the hand.
         Container(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [AppColors.tintSky, Colors.white],
+              colors: [AppColors.tintSky, scheme.surface],
             ),
             borderRadius: BorderRadius.circular(20),
             border:

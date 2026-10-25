@@ -107,12 +107,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           padding:
                               const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
+                            gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
                                 AppColors.tintSky,
-                                Colors.white,
+                                Theme.of(context).colorScheme.surface,
                               ],
                             ),
                             borderRadius: BorderRadius.circular(16),

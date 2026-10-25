@@ -171,6 +171,9 @@ class _HandViewState extends State<HandView>
                   tokens: tokens,
                   compact: widget.compact,
                   text: TalkhimikText.of(context),
+                  // Angle text under the badges must stay legible in both
+                  // themes.
+                  mutedText: scheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -191,6 +194,7 @@ class HandPainter extends CustomPainter {
     required this.tokens,
     required this.text,
     this.compact = false,
+    this.mutedText = const Color(0xFF4A4944),
   });
 
   final HandPose pose;
@@ -202,6 +206,9 @@ class HandPainter extends CustomPainter {
 
   /// Compact mode: no fingertip badges.
   final bool compact;
+
+  /// Angle-label color under the badges (theme-dependent for dark mode).
+  final Color mutedText;
 
   static const _fingerLengths = [0.85, 1.0, 1.0, 0.9, 0.7]; // relative
   static const _baseAngles = [-38.0, -14.0, 8.0, 30.0, 52.0]; // deg from up
@@ -402,7 +409,7 @@ class HandPainter extends CustomPainter {
       center + const Offset(0, 22),
       text.caption!.copyWith(
         fontWeight: FontWeight.w600,
-        color: const Color(0xFF4A4944),
+        color: mutedText,
       ),
     );
   }
