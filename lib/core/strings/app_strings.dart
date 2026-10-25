@@ -36,6 +36,8 @@ class AppStrings {
   static const liveTitle = 'Live';
   static const leftHandLabel = 'L';
   static const rightHandLabel = 'R';
+  static const leftHandTitle = 'Left hand';
+  static const rightHandTitle = 'Right hand';
   static const freshness = 'Freshness';
   static const stale = 'Stale';
   static const packetLoss = 'Packet loss';

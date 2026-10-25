@@ -109,29 +109,26 @@ class _HandPanel extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: HandView(
-                target: HandPose(
-                  fingerDeg: [
-                    for (var i = 0; i < 5; i++)
-                      (t?.angles[i] ?? 0).toDouble(),
-                  ],
-                  rollDeg: t?.rollDeg ?? 0,
-                  pitchDeg: t?.pitchDeg ?? 0,
-                  yawDeg: t?.yawDeg ?? 0,
-                  handedness: hand.hand,
-                  invalidMask: t?.validMask ?? 0,
-                ),
-                uncalibrated: hand.uncalibrated,
-                stale: hand.isStaleAt(now),
-                label: hand.hand == GloveHand.left
-                    ? AppStrings.leftHandLabel
-                    : AppStrings.rightHandLabel,
-              ),
-            ),
-          ],
+        HandView(
+          target: HandPose(
+            fingerDeg: [
+              for (var i = 0; i < 5; i++) (t?.angles[i] ?? 0).toDouble(),
+            ],
+            rollDeg: t?.rollDeg ?? 0,
+            pitchDeg: t?.pitchDeg ?? 0,
+            yawDeg: t?.yawDeg ?? 0,
+            handedness: hand.hand,
+            invalidMask: t?.validMask ?? 0,
+          ),
+          title: hand.hand == GloveHand.left
+              ? AppStrings.leftHandTitle
+              : AppStrings.rightHandTitle,
+          chipLabel: calId == null
+              ? null
+              : 'cal_id $calId'
+                  '${table != null ? ' · fw ${table.firmwareVersion}' : ''}',
+          uncalibrated: hand.uncalibrated,
+          stale: hand.isStaleAt(now),
         ),
         ConnectionBadges(hand: hand, now: now),
         const SizedBox(height: 8),
@@ -139,16 +136,6 @@ class _HandPanel extends ConsumerWidget {
           Chip(
             label: const Text(AppStrings.uncalibrated),
             backgroundColor: scheme.errorContainer,
-          )
-        else if (calId != null)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: ActionChip(
-              label: Text('cal_id $calId'
-                  '${table != null ? ' · fw ${table.firmwareVersion}' : ''}'),
-              onPressed: () =>
-                  Navigator.of(context).pushNamed('/calibration'),
-            ),
           ),
         const SizedBox(height: 8),
         for (var i = 0; i < fingerNames.length; i++)

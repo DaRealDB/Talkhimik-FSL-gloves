@@ -60,8 +60,8 @@ void main() {
     right.emitTelemetry(frame(1, hand: GloveHand.right));
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text(AppStrings.leftHandLabel), findsWidgets);
-    expect(find.text(AppStrings.rightHandLabel), findsWidgets);
+    expect(find.text(AppStrings.leftHandTitle), findsOneWidget);
+    expect(find.text(AppStrings.rightHandTitle), findsOneWidget);
     expect(find.textContaining('cal_id 3'), findsNWidgets(2));
     expect(find.textContaining('12.5°'), findsNWidgets(2)); // roll tile
   });
