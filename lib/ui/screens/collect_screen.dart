@@ -96,7 +96,14 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
             runSpacing: 8,
             children: [
               if (!recording)
+                // Large record pill (step 4b).
                 FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 16),
+                    textStyle: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
                   icon: const Icon(Icons.fiber_manual_record),
                   label: const Text(AppStrings.recordStart),
                   onPressed: () async {

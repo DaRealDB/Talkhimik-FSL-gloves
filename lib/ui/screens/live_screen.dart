@@ -4,13 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/glove/glove_connection.dart';
 import '../../domain/models/calibration_table.dart';
 import '../../domain/models/hand_state.dart';
 import '../../domain/models/telemetry_packet.dart';
 import '../../domain/sensing/sensor_math.dart';
 import '../widgets/connection_badges.dart';
-import '../widgets/finger_bar.dart';
+import '../widgets/diagonal_slab.dart';
+import '../widgets/finger_ticker_card.dart';
 import '../widgets/hand_view.dart';
 import '../widgets/imu_tiles.dart';
 
@@ -109,26 +111,47 @@ class _HandPanel extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        HandView(
-          target: HandPose(
-            fingerDeg: [
-              for (var i = 0; i < 5; i++) (t?.angles[i] ?? 0).toDouble(),
-            ],
-            rollDeg: t?.rollDeg ?? 0,
-            pitchDeg: t?.pitchDeg ?? 0,
-            yawDeg: t?.yawDeg ?? 0,
-            handedness: hand.hand,
-            invalidMask: t?.validMask ?? 0,
+        // Glass stage with the diagonal slab backdrop behind the hand.
+        Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.tintSky, Colors.white],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border:
+                Border.all(color: scheme.outlineVariant),
           ),
-          title: hand.hand == GloveHand.left
-              ? AppStrings.leftHandTitle
-              : AppStrings.rightHandTitle,
-          chipLabel: calId == null
-              ? null
-              : 'cal_id $calId'
-                  '${table != null ? ' · fw ${table.firmwareVersion}' : ''}',
-          uncalibrated: hand.uncalibrated,
-          stale: hand.isStaleAt(now),
+          child: Stack(
+            children: [
+              const Positioned.fill(
+                child: IgnorePointer(child: SlabBackdrop(variant: 1)),
+              ),
+              HandView(
+                target: HandPose(
+                  fingerDeg: [
+                    for (var i = 0; i < 5; i++)
+                      (t?.angles[i] ?? 0).toDouble(),
+                  ],
+                  rollDeg: t?.rollDeg ?? 0,
+                  pitchDeg: t?.pitchDeg ?? 0,
+                  yawDeg: t?.yawDeg ?? 0,
+                  handedness: hand.hand,
+                  invalidMask: t?.validMask ?? 0,
+                ),
+                title: hand.hand == GloveHand.left
+                    ? AppStrings.leftHandTitle
+                    : AppStrings.rightHandTitle,
+                chipLabel: calId == null
+                    ? null
+                    : 'cal_id $calId'
+                        '${table != null ? ' · fw ${table.firmwareVersion}' : ''}',
+                uncalibrated: hand.uncalibrated,
+                stale: hand.isStaleAt(now),
+              ),
+            ],
+          ),
         ),
         ConnectionBadges(hand: hand, now: now),
         const SizedBox(height: 8),
@@ -138,16 +161,12 @@ class _HandPanel extends ConsumerWidget {
             backgroundColor: scheme.errorContainer,
           ),
         const SizedBox(height: 8),
-        for (var i = 0; i < fingerNames.length; i++)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: FingerBar(
-              name: fingerNames[i],
-              angleDeg: (t?.angles[i] ?? 0).toDouble(),
-              invalid: t != null && t.validMask & (1 << i) == 0,
-              weak: weakMask & (1 << i) != 0,
-            ),
-          ),
+        // Finger ticker cards: horizontal scroll, focused card scales.
+        _FingerTicker(
+          angles: [for (var i = 0; i < 5; i++) (t?.angles[i] ?? 0).toDouble()],
+          validMask: t?.validMask ?? 0,
+          weakMask: weakMask,
+        ),
         const SizedBox(height: 8),
         if (t != null) ...[
           ImuTiles(
@@ -190,6 +209,47 @@ class _HandPanel extends ConsumerWidget {
       ref.read(hand.hand == GloveHand.left
           ? gloveConnectionProvider
           : rightGloveConnectionProvider);
+}
+
+/// Horizontal finger-card ticker (step 4b): thumb → pinky, focused card
+/// scales to 1.06, sparklines buffer their own history.
+class _FingerTicker extends StatefulWidget {
+  const _FingerTicker({
+    required this.angles,
+    required this.validMask,
+    required this.weakMask,
+  });
+
+  final List<double> angles;
+  final int validMask;
+  final int weakMask;
+
+  @override
+  State<_FingerTicker> createState() => _FingerTickerState();
+}
+
+class _FingerTickerState extends State<_FingerTicker> {
+  int? _focused;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 88,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: fingerNames.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, i) => FingerTickerCard(
+          name: fingerNames[i],
+          angleDeg: widget.angles[i],
+          invalid: widget.validMask & (1 << i) == 0,
+          weak: widget.weakMask & (1 << i) != 0,
+          focused: _focused == i,
+          onTap: () => setState(() => _focused = _focused == i ? null : i),
+        ),
+      ),
+    );
+  }
 }
 
 /// Collapsible raw ADC + recomputed Ω per finger (master §6.1).

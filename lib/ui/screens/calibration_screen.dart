@@ -116,14 +116,34 @@ class _Running extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Progress eases toward STATUS.step (driven only by the glove).
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: state.step == 0 ? 0 : state.step / 10),
-          duration: TalkhimikMotion.of(context).resolve(
-              context, TalkhimikMotion.values.quick),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, _) => LinearProgressIndicator(
-            value: value,
+        // Progress ring (n of 10) in the brand gradient — driven only by
+        // STATUS.step, easing toward each new value.
+        Center(
+          child: TweenAnimationBuilder<double>(
+            tween:
+                Tween(begin: 0, end: state.step == 0 ? 0 : state.step / 10),
+            duration: TalkhimikMotion.of(context).resolve(
+                context, TalkhimikMotion.values.quick),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) => SizedBox(
+              width: 72,
+              height: 72,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(72, 72),
+                    painter: _ProgressRingPainter(
+                      fraction: value,
+                      gradient: AppColors.deepGradient,
+                      trackColor: scheme.surfaceContainerHighest,
+                    ),
+                  ),
+                  Text('${state.step}/10',
+                      style: Theme.of(context).textTheme.titleSmall),
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -172,7 +192,10 @@ class _Running extends ConsumerWidget {
                       state.step == 0
                           ? AppStrings.calibrationStart
                           : prompt,
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      // Display prompt: one instruction per screen.
+                      style: TalkhimikText.of(context)
+                          .display
+                          ?.copyWith(color: scheme.onSurface),
                     ),
                   ),
                 ],
@@ -326,6 +349,45 @@ class _Done extends ConsumerWidget {
 
 /// Per-finger summary: valid ✓/✗, weak ⚠, flat Ω, 90° Ω, span counts
 /// (master §4.4). Source: the mirrored CAL_INFO — nothing else.
+class _ProgressRingPainter extends CustomPainter {
+  const _ProgressRingPainter({
+    required this.fraction,
+    required this.gradient,
+    required this.trackColor,
+  });
+
+  final double fraction;
+  final Gradient gradient;
+  final Color trackColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = 8.0;
+    final rect = Offset.zero & size;
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..color = trackColor;
+    canvas.drawArc(rect.deflate(stroke / 2), 0, 2 * math.pi, false, track);
+
+    final progress = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..shader = gradient
+          .createShader(rect.deflate(stroke / 2))
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(rect.deflate(stroke / 2), -math.pi / 2,
+        2 * math.pi * fraction, false, progress);
+  }
+
+  @override
+  bool shouldRepaint(_ProgressRingPainter oldDelegate) =>
+      oldDelegate.fraction != fraction ||
+      oldDelegate.gradient != gradient ||
+      oldDelegate.trackColor != trackColor;
+}
+
 class _SummaryTable extends StatelessWidget {
   const _SummaryTable({required this.table});
 
