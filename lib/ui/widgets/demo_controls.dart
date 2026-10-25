@@ -5,6 +5,7 @@ import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
 import '../../data/glove/glove_connection.dart';
 import '../../data/glove/mock_glove_connection.dart';
+import 'anim.dart';
 
 /// Dev-only panel for driving the mock glove: scenarios, single gestures,
 /// link drop/reconnect, and app commands. Hidden entirely when the real
@@ -42,13 +43,19 @@ class _DemoControlsState extends ConsumerState<DemoControls> {
             runSpacing: 8,
             children: [
               for (final scenario in MockScenario.values)
-                OutlinedButton(
-                  onPressed: () => mock.startScenario(scenario),
-                  child: Text(scenario.label),
+                PressScale(
+                  onTap: () => mock.startScenario(scenario),
+                  child: OutlinedButton(
+                    onPressed: null,
+                    child: Text(scenario.label),
+                  ),
                 ),
-              OutlinedButton(
-                onPressed: mock.stopScenario,
-                child: const Text(AppStrings.stopScenario),
+              PressScale(
+                onTap: mock.stopScenario,
+                child: OutlinedButton(
+                  onPressed: null,
+                  child: const Text(AppStrings.stopScenario),
+                ),
               ),
             ],
           ),

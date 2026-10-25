@@ -333,3 +333,28 @@ cues (✗ hatch, ⚠ amber, desaturation, 40 % opacity). Shared `HeaderBand`
 (olive-lime band + diagonal corner + chip) heads every panel; pill tabs
 switch L/R and navigation. "Reduce motion" is respected by the hand
 animation.
+
+### Typography & motion
+
+- **Font**: Inter 400/500/600/700, bundled (`assets/fonts/`, OFL) — never
+  fetched at runtime (C6). Full M3 TextTheme (display 36 → label 11) plus
+  `TalkhimikText` extension: `bandTitle` 16/700, `transcriptWord` 32/600
+  (the product's main text), `metric`/`id` with tabular figures.
+- **Motion** (`TalkhimikMotion`): 100/180/280/420 ms ·
+  easeOutCubic/easeOut/easeIn/easeInOutCubicEmphasized/elasticOut.
+  `resolve()` zeroes every duration under reduce-motion.
+- **What animates**: Live (stale fade, cal_id chip pulse, finger bars,
+  tabular metrics) · status bar (busy dot pulse, label crossfade) ·
+  wizard (step slide+fade, flat↔90 icon, error-3 shake, checkmark pop +
+  cal_id count-up) · recorder (recording dot, haptics on start/stop,
+  session-card entrance) · transcript (bubble entrance, corrected flash,
+  badge color ease) · shared fade-through page transitions, brand ripples,
+  pressed-scale microinteraction. Haptics: capture accepted, calibration
+  complete, recording start/stop.
+- **Rejected for perf/accessibility**: skeleton shimmer (would need a
+  loading-state flag = logic change), TTS "speaking" bars (no completion
+  signal without protocol changes), session-card exit choreography
+  (AnimatedList too invasive; deletion stays instant), painter-level
+  desaturation tween (label/chip fades cover the state change).
+- **Large text**: verified at 1.0/1.3/2.0 × on 360 dp for all six screens
+  (test/widget/typography_scale_test.dart); bands and chips ellipsize.

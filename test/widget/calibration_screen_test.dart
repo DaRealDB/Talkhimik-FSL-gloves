@@ -90,6 +90,10 @@ void main() {
     expect(find.text(AppStrings.calibrationSpanReject), findsOneWidget);
     expect(
         find.text(AppStrings.calibrationBendPrompt('thumb')), findsOneWidget);
+
+    // The rejection shake is one-shot: after it settles, the tree is
+    // quiet (no lingering animation) — motion pass acceptance.
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('completion shows the CAL_INFO summary', (tester) async {
