@@ -89,12 +89,8 @@ class AppStrings {
   static String calibrationBendPrompt(String finger) =>
       'Bend your $finger to 90°';
 
-  // Record mode (FR-9)
+  // Record mode (FR-9, master §5)
   static const recordModeTitle = 'Record mode';
-  static const recordIntroTitle = 'Collect labeled training data';
-  static const recordIntroBody = 'Researcher mode: prompt FSL signs and '
-      'record labeled samples with the participant ID for the training '
-      'pipeline. Consent must be given before any data is collected.';
   static const recordNeedsParticipant =
       'Set the participant ID in Settings first (FR-13).';
   static const recordNeedsConsent =
@@ -113,14 +109,5 @@ class AppStrings {
   static const datasetRows = 'rows';
   static const datasetDropped = 'dropped';
   static const recordStart = 'Start recording';
-  static const recordSkip = 'Skip sign';
   static const recordAbort = 'Abort';
-  static const recordSignPrompt = 'Sign this:';
-  static const recordLastSample = 'Last sample';
-  static const recordSamples = 'samples';
-  static const recordSession = 'Session';
-  static const recordDoneTitle = 'Recording complete';
-  static const recordLogsHint =
-      'Rows appear under Session logs for CSV export (FR-16).';
-  static const recordDone = 'Done';
 }
