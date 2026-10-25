@@ -178,11 +178,13 @@ seq-gap loss, trailing-second update rate, mismatch flag):
   in-plane + roll/pitch skew, ticker low-pass, invalid ✗ / uncalibrated
   desaturated / stale 40 % opacity
 - Finger bars (0–90°, invalid dimmed, weak amber) · raw ADC + Ω details
-  (recomputed via §2) · IMU tiles (yaw labelled relative — gyro-only)
-- Health badges: freshness (> 500 ms = stale), packet loss %, rate, battery
-  (`0xFF` → "—"), hand-mismatch warning
-- Actions: Zero yaw (0x06), Vibrate (0x08), Record → `/collect`,
-  calibration chip (cal_id + fw version) → `/calibration`
+  (collapsed expander; recomputed via §2) · IMU tiles (yaw labelled
+  relative — gyro-only)
+- One merged health line: freshness (> 500 ms = stale), packet loss %,
+  update rate — plus a stale chip and the hand-mismatch warning when they
+  apply. Battery is hidden until the firmware actually reports it.
+- Actions: Zero yaw (0x06), Record → `/collect`, calibration chip
+  (cal_id + fw version) → `/calibration`
 
 ---
 
@@ -232,10 +234,11 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 - **Hive** (pure Dart; IndexedDB on web): `events`, `syncQueue` (C-S4),
   `sessions`. Participant id/consent live in shared_preferences only.
 - **shared_preferences**: language/rate/voice/mute, large text,
-  participantId, consentGiven/Date, forceMock, demoScenario, calinfo.L/R.
+  participantId, consentGiven/Date, forceMock + demoScenario (in the
+  Settings "Developer" section), calinfo.L/R.
 - **Mock glove** (dev/demo/test): transcript scenarios (alphabet sweep,
-  mixed confidence, low battery, sensor fault, random disconnect), animated
-  telemetry, wizard with forced errors 3/4, loss bursts every 7 s, per hand.
+  mixed confidence, random disconnect), animated telemetry, wizard with
+  forced errors 3/4, loss bursts every 7 s, per hand.
 
 ---
 
