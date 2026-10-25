@@ -28,12 +28,13 @@ device connected.
 
 ## Structure
 
-- `lib/domain` — models, vocabulary table, repository interfaces
+- `lib/domain` — models, sensor math, vocabulary table, repository interfaces
 - `lib/data` — Hive log store, shared-prefs settings, BLE glove connection
-  (real `FlutterBlueGloveConnection` + `MockGloveConnection`), codecs
-- `lib/application` — Riverpod controllers (transcript, glove, settings,
-  export, calibration, data collection)
-- `lib/ui` — screens and widgets
+  (real `FlutterBlueGloveConnection` + `MockGloveConnection`), codecs,
+  dataset writer
+- `lib/application` — Riverpod controllers (transcript, glove, live,
+  calibration wizard, dataset recorder, settings, export)
+- `lib/ui` — screens and widgets (home, live, calibration, collect, export)
 
 ## Tests
 
@@ -44,14 +45,11 @@ flutter test
 
 The mock glove and in-memory fakes cover everything off-device; hardware
 verification is staged in
-[`docs/ble-integration-checklist.md`](docs/ble-integration-checklist.md)
-(nRF Connect first, then this client).
+[`docs/TALKHIMIK.md`](docs/TALKHIMIK.md) §8 (nRF Connect first, then this
+client).
 
 ## Documentation
 
-- [`docs/TALKHIMIK_App_System.md`](docs/TALKHIMIK_App_System.md) — this
-  app, as built: architecture, feature map (SRS codes), GATT contract,
-  persistence, testing.
-- [`docs/TALKHIMIK_Thesis_Reference.md`](docs/TALKHIMIK_Thesis_Reference.md)
-  — consolidated thesis reference: system architecture (what & why) plus the
-  as-built firmware and web dashboard (what runs today).
+- [`docs/TALKHIMIK.md`](docs/TALKHIMIK.md) — the single doc: byte-exact
+  glove contract, architecture, live screen, calibration wizard, dataset
+  recorder, testing, definition of done, and thesis pointers.
