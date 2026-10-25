@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 
+import '../../core/theme/app_theme.dart';
 import '../../core/theme/motion.dart';
 
 /// One-shot animation helpers (typography & motion pass). Looping helpers
@@ -42,19 +43,34 @@ class KeyedOneShot extends StatelessWidget {
 }
 
 /// Fade + slight rise on mount (bubbles, session cards, empty states).
+/// [delay] staggers entrances (slab backdrops, empty states).
 class FadeIn extends StatelessWidget {
-  const FadeIn({super.key, required this.child, this.offset = 12});
+  const FadeIn({
+    super.key,
+    required this.child,
+    this.offset = 12,
+    this.delay = Duration.zero,
+  });
 
   final Widget child;
   final double offset;
+  final Duration delay;
 
   @override
   Widget build(BuildContext context) {
     final motion = TalkhimikMotion.of(context);
+    final total = motion.resolve(context, motion.quick) + delay;
+    final curve = delay == Duration.zero
+        ? motion.enterCurve
+        : Interval(
+            delay.inMilliseconds / total.inMilliseconds,
+            1,
+            curve: motion.enterCurve,
+          );
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
-      duration: motion.resolve(context, motion.quick),
-      curve: motion.enterCurve,
+      duration: total == Duration.zero ? Duration.zero : total,
+      curve: curve,
       builder: (context, t, child) => Opacity(
         opacity: t,
         child: Transform.translate(offset: Offset(0, offset * (1 - t)), child: child),
@@ -87,10 +103,26 @@ class _PressScaleState extends State<PressScale> {
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) => setState(() => _pressed = false),
       onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
+      child: AnimatedContainer(
         duration: motion.resolve(context, motion.instant),
-        child: widget.child,
+        // Pressed: subtle azure glow under the pill (microinteraction).
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          boxShadow: _pressed
+              ? [
+                  BoxShadow(
+                    color: AppColors.azure.withValues(alpha: 0.35),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: AnimatedScale(
+          scale: _pressed ? 0.97 : 1.0,
+          duration: motion.resolve(context, motion.instant),
+          child: widget.child,
+        ),
       ),
     );
   }

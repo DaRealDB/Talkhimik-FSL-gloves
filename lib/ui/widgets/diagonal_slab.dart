@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'anim.dart';
+
 /// The signature 45° diagonal slab — a decorative parallelogram echoing
 /// the reference icon's geometry. Lives on surfaces and hero backgrounds,
 /// never inside tap targets (interactive controls stay pills).
@@ -60,17 +62,25 @@ class SlabBackdrop extends StatelessWidget {
         builder: (context, constraints) => Stack(
           children: [
             // Two large slabs, offset by the variant for per-screen variety.
-            DiagonalSlab(
-              width: constraints.maxWidth * (variant.isEven ? 0.9 : 0.7),
-              height: 180,
-              color: const Color(0x1054C5F8), // 6 % sky
-              alignment: Alignment.topRight,
+            // They slide in once, staggered by 60 ms (motion pass).
+            FadeIn(
+              offset: 20,
+              child: DiagonalSlab(
+                width: constraints.maxWidth * (variant.isEven ? 0.9 : 0.7),
+                height: 180,
+                color: const Color(0x1054C5F8), // 6 % sky
+                alignment: Alignment.topRight,
+              ),
             ),
-            DiagonalSlab(
-              width: constraints.maxWidth * (variant.isOdd ? 0.9 : 0.6),
-              height: 140,
-              color: const Color(0x0F29B6F6), // 6 % azure
-              alignment: Alignment.bottomLeft,
+            FadeIn(
+              offset: 20,
+              delay: const Duration(milliseconds: 60),
+              child: DiagonalSlab(
+                width: constraints.maxWidth * (variant.isOdd ? 0.9 : 0.6),
+                height: 140,
+                color: const Color(0x0F29B6F6), // 6 % azure
+                alignment: Alignment.bottomLeft,
+              ),
             ),
           ],
         ),

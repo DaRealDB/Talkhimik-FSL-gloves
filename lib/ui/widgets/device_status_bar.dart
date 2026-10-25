@@ -247,25 +247,29 @@ class _Banner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipPath(
-      clipper: const _BannerCap(corner: 22),
-      child: Container(
-        height: 40,
-        margin: const EdgeInsets.only(top: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: colors),
-        ),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context)
-                .textTheme
-                .labelLarge
-                ?.copyWith(color: textColor, fontWeight: FontWeight.w600),
+    // Banners slide + fade in (motion pass).
+    return FadeIn(
+      offset: 10,
+      child: ClipPath(
+        clipper: const _BannerCap(corner: 22),
+        child: Container(
+          height: 40,
+          margin: const EdgeInsets.only(top: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: colors),
+          ),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelLarge
+                  ?.copyWith(color: textColor, fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ),

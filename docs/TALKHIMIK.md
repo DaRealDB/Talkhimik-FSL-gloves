@@ -311,50 +311,58 @@ in the thesis folder: `Desktop/thesis sep4/` — `TALKHIMIK_System_Architecture.
 
 ---
 
-## 12. Design system (2026-10 refresh)
+## 12. Design system (2026-10 refresh, v3)
 
-Source of truth: `lib/core/theme/app_theme.dart` (`AppColors` + the
-`TalkhimikTokens` ThemeExtension). LIGHT is the primary theme; dark derives
-from the same hues.
+Source of truth: `lib/core/theme/` — `AppColors` + `TalkhimikTokens` +
+`TalkhimikText` + `TalkhimikMotion` ThemeExtensions. Identity: the three
+signature blues — **sky `#54C5F8`, azure `#29B6F6`, navy `#01579B`** — on a
+clean white field with crisp 45° diagonal slabs (`DiagonalSlab` /
+`SlabBackdrop`) and a soft fold shadow where navy meets azure. LIGHT is the
+primary theme; dark derives from the navy (`#06182B` / `#0C2540`).
 
-| Token | Light | Role |
-|---|---|---|
-| primary | `#067A4C` | App bar, filled buttons, active tab (white text, AA) |
-| secondary | `#17713F` | Diagonal corner, outlines |
-| tertiary | `#7CA526` | Header bands; on-band text `#1C280A` (AA — white fails) |
-| background / surface | `#D6D4CD` / `#EAE8E2` | Warm-gray page / cards |
-| success / warning / error | `#1B7A3D` / `#B26A00` / `#B3261E` | State colors |
-| finger gradient | `#D8D0C4` → `#7CA526` | Flexion fill (neutral → lime) |
-
-Radius: cards 16 · controls 12 · pills 999. Elevation: cards 1 (soft
-shadow), app bar 0. Confidence badges are **outline-style** (dot + border +
-tint) so they never read as brand surfaces; finger states keep non-color
-cues (✗ hatch, ⚠ amber, desaturation, 40 % opacity). Shared `HeaderBand`
-(olive-lime band + diagonal corner + chip) heads every panel; pill tabs
-switch L/R and navigation. "Reduce motion" is respected by the hand
-animation.
+**Rules baked in (AA):** sky and azure are fills only (≈1.9:1 / ≈2.3:1 on
+white) — text on them is navy (`#0B2540`, 5.9:1). Cards/inputs carry the
+1 dp `#3E7196` hairline (4.4:1) so the background → card → chip depth step
+always reads. Confidence badges: green/amber/red + **✓ / ◐ / ! glyphs +
+labels** (color never the only signal). Connected = filled brand-blue dot +
+label; info = teal `#00796B` + ⓘ (distinct hue); Demo = neutral tag, mock
+mode only; battery hidden when the firmware sends 0xFF (never a
+placeholder).
 
 ### Typography & motion
 
-- **Font**: Inter 400/500/600/700, bundled (`assets/fonts/`, OFL) — never
-  fetched at runtime (C6). Full M3 TextTheme (display 36 → label 11) plus
-  `TalkhimikText` extension: `bandTitle` 16/700, `transcriptWord` 32/600
-  (the product's main text), `metric`/`id` with tabular figures.
-- **Motion** (`TalkhimikMotion`): 100/180/280/420 ms ·
-  easeOutCubic/easeOut/easeIn/easeInOutCubicEmphasized/elasticOut.
-  `resolve()` zeroes every duration under reduce-motion.
-- **What animates**: Live (stale fade, cal_id chip pulse, finger bars,
-  tabular metrics) · status bar (busy dot pulse, label crossfade) ·
-  wizard (step slide+fade, flat↔90 icon, error-3 shake, checkmark pop +
-  cal_id count-up) · recorder (recording dot, haptics on start/stop,
-  session-card entrance) · transcript (bubble entrance, corrected flash,
-  badge color ease) · shared fade-through page transitions, brand ripples,
-  pressed-scale microinteraction. Haptics: capture accepted, calibration
-  complete, recording start/stop.
-- **Rejected for perf/accessibility**: skeleton shimmer (would need a
-  loading-state flag = logic change), TTS "speaking" bars (no completion
-  signal without protocol changes), session-card exit choreography
-  (AnimatedList too invasive; deletion stays instant), painter-level
-  desaturation tween (label/chip fades cover the state change).
-- **Large text**: verified at 1.0/1.3/2.0 × on 360 dp for all six screens
-  (test/widget/typography_scale_test.dart); bands and chips ellipsize.
+- **Font**: Inter 400/500/600/700, bundled (`assets/fonts/`, OFL), never
+  fetched (C6). Scale: display 36/44, title 24/20, body 16, label 14,
+  caption 12. `transcriptHero` 44/700 (leading 1.05) for the latest sign —
+  history steps down 24 → 18 at 70 %/50 % opacity; metrics/id use tabular
+  figures.
+- **Motion** (`TalkhimikMotion`): 100/180/280/420 ms · easeOutCubic/easeIn/
+  elasticOut · `resolve()` zeroes durations under reduce-motion. What
+  animates: slab entrances (staggered 60 ms), hero sign fade+rise, status
+  pill label crossfade, busy-dot/recording pulses (gated off in tests and
+  reduce-motion), banner slide+fade, wizard step slide, error-3 shake,
+  checkmark draw + cal_id count-up, bubble entrances, pressed-scale + azure
+  glow, shared fade-through transitions ≤ 280 ms. Haptics: capture
+  accepted, calibration complete, recording start/stop.
+- **Rejected**: idle slab drift (perpetual animation — conflicts with
+  off-screen and settle guarantees), skeleton shimmer (needs a loading
+  flag = logic change), TTS speaking bars (no completion signal), session
+  card exit choreography (instant delete kept).
+
+### UI/UX laws — how each is met
+
+| Law | Implementation |
+|---|---|
+| Fitts | 48 dp min targets, dominant Connect/Listening pill in the thumb zone, one dominant action per screen |
+| Hick | 4 labeled bottom-nav destinations, ≤ 2 app-bar actions, 1 primary + 1 secondary per screen |
+| Jakob | App bar + labeled bottom nav + system back; controls are pills |
+| Miller | ≤ 5 finger cards per ticker, one calibration step per screen, grouped More cards |
+| Proximity/Similarity | Status + banner share a card; quick-reply chips styled like the input |
+| Aesthetic-usability/Hierarchy | hero sign > title > body > caption; navy reserved for the main action and active states (Von Restorff) |
+| Doherty | feedback < 400 ms; animations never block input |
+| Postel/Error prevention | inline recovery copy for calibration errors 3/4, permissions, disconnects; battery never faked |
+| Tesler | BLE jargon behind the details sheet; demo controls in Developer |
+| Zeigarnik/Peak-end | progress ring n/10 + elastic checkmark completion |
+| Serial-position | primary action in the thumb zone, secondary at the bottom edge |
+| Recognition over recall | every icon has a label or tooltip; custom-painted widgets get Semantics labels |
+| Accessibility | AA everywhere, non-color state cues, reduce-motion zeroing, large text verified at 1.0/1.3/2.0 × on 360 dp (all screens) |
