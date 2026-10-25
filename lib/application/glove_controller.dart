@@ -72,10 +72,17 @@ class GloveState {
 /// the phase leaves `ready` (well inside the 3-second bound from C-S5) —
 /// the banner does not wait for the reconnect attempt to fail.
 class GloveController extends Notifier<GloveState> {
-  /// Injectable for tests; production uses [Future.delayed].
-  GloveController([this._delay = Future<void>.delayed]);
+  /// Injectable for tests; production uses [Future.delayed]. The optional
+  /// [connectionProvider] rebinds the controller to a specific glove (the
+  /// right-hand controller passes [rightGloveConnectionProvider]); the
+  /// default is the keep-area primary (left) connection.
+  GloveController([
+    this._delay = Future<void>.delayed,
+    this.connectionProvider,
+  ]);
 
   final Future<void> Function(Duration) _delay;
+  final Provider<GloveConnection>? connectionProvider;
 
   StreamSubscription<DeviceStatusPacket>? _statusSub;
   StreamSubscription<TelemetryPacket>? _telemetrySub;
@@ -88,7 +95,7 @@ class GloveController extends Notifier<GloveState> {
 
   @override
   GloveState build() {
-    final connection = ref.read(gloveConnectionProvider);
+    final connection = ref.read(connectionProvider ?? gloveConnectionProvider);
     _statusSub =
         connection.deviceStatus.listen((s) => state = state.copyWith(status: s));
     _telemetrySub = connection.telemetry
@@ -114,7 +121,7 @@ class GloveController extends Notifier<GloveState> {
     _explicitConnectInFlight = true;
     state = state.copyWith(connectError: null);
     try {
-      await ref.read(gloveConnectionProvider).connect();
+      await ref.read(connectionProvider ?? gloveConnectionProvider).connect();
     } catch (e) {
       state = state.copyWith(
         phase: GloveConnectionPhase.disconnected,
@@ -131,7 +138,7 @@ class GloveController extends Notifier<GloveState> {
   Future<void> disconnect() async {
     _manualDisconnect = true;
     _cancelPendingReconnect();
-    await ref.read(gloveConnectionProvider).disconnect();
+    await ref.read(connectionProvider ?? gloveConnectionProvider).disconnect();
   }
 
   void _onPhase(GloveConnectionPhase phase) {
@@ -178,7 +185,7 @@ class GloveController extends Notifier<GloveState> {
     if (!ref.mounted || generation != _generation) return;
     state = state.copyWith(reconnectAttempt: state.reconnectAttempt + 1);
     try {
-      await ref.read(gloveConnectionProvider).reconnect();
+      await ref.read(connectionProvider ?? gloveConnectionProvider).reconnect();
     } catch (_) {
       // Attempt failed (glove out of range or busy). While the link is
       // still down, keep trying with the next, longer backoff step.

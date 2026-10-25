@@ -13,7 +13,7 @@ import '../helpers/fake_glove_connection.dart';
 void main() {
   late FakeGloveConnection fake;
 
-  Widget wrap(Widget child) => ProviderScope(
+  Widget wrap(Widget child, {FakeGloveConnection? right}) => ProviderScope(
         overrides: [
           gloveConnectionProvider.overrideWithValue(fake),
           // The fake is not a MockGloveConnection; pin the demo branch so
@@ -21,6 +21,11 @@ void main() {
           gloveIsMockProvider.overrideWithValue(true),
           gloveControllerProvider
               .overrideWith(() => GloveController((d) async {})),
+          if (right != null) ...[
+            rightGloveConnectionProvider.overrideWithValue(right),
+            rightGloveControllerProvider.overrideWith(() =>
+                GloveController((d) async {}, rightGloveConnectionProvider)),
+          ],
         ],
         child: MaterialApp(home: Scaffold(body: child)),
       );
@@ -98,6 +103,40 @@ void main() {
 
     expect(find.byKey(DeviceStatusBar.uncalibratedChipKey), findsOneWidget);
     expect(find.text(AppStrings.uncalibrated), findsOneWidget);
+  });
+
+  testWidgets('aggregates both gloves when left and right are ready '
+      '(master §7.3)', (tester) async {
+    final right = FakeGloveConnection();
+    await tester.pumpWidget(wrap(const DeviceStatusBar(), right: right));
+    fake.emitPhase(GloveConnectionPhase.ready);
+    right.emitPhase(GloveConnectionPhase.ready);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('L + R'), findsOneWidget);
+  });
+
+  testWidgets('shows the right glove when only it is connected',
+      (tester) async {
+    final right = FakeGloveConnection();
+    await tester.pumpWidget(wrap(const DeviceStatusBar(), right: right));
+    right.emitPhase(GloveConnectionPhase.ready);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Connected (R)'), findsOneWidget);
+  });
+
+  testWidgets('the uncalibrated chip reflects either glove', (tester) async {
+    final right = FakeGloveConnection();
+    await tester.pumpWidget(wrap(const DeviceStatusBar(), right: right));
+    right.emitPhase(GloveConnectionPhase.ready);
+    right.emitStatus(const DeviceStatusPacket(
+      batteryPercent: 80,
+      uncalibrated: true,
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(DeviceStatusBar.uncalibratedChipKey), findsOneWidget);
   });
 
   testWidgets('real glove shows a connect button and surfaces failures',

@@ -18,6 +18,15 @@ class DeviceStatusBar extends ConsumerWidget {
   static const uncalibratedChipKey = Key('glove-uncalibrated-chip');
   static const connectButtonKey = Key('connect-glove-button');
 
+  static bool _busy(GloveConnectionPhase phase) => switch (phase) {
+        GloveConnectionPhase.scanning ||
+        GloveConnectionPhase.connecting ||
+        GloveConnectionPhase.discoveringServices ||
+        GloveConnectionPhase.reconnecting =>
+          true,
+        _ => false,
+      };
+
   static String _phaseLabel(GloveConnectionPhase phase) => switch (phase) {
         GloveConnectionPhase.disconnected => AppStrings.disconnected,
         GloveConnectionPhase.scanning => 'Scanning…',
@@ -42,19 +51,37 @@ class DeviceStatusBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(gloveControllerProvider);
+    // Aggregate for the second glove (master §7.3): the bar keeps its
+    // single-glove look while only the left is connected, and adds the
+    // right hand only when it is actually up.
+    final rightState = ref.watch(rightGloveControllerProvider);
     final isMock = ref.watch(gloveIsMockProvider);
     final scheme = Theme.of(context).colorScheme;
     final status = state.status;
+    final rightStatus = rightState.status;
 
-    final dotColor = switch (state.phase) {
-      GloveConnectionPhase.ready => Colors.green,
-      GloveConnectionPhase.disconnected => scheme.outline,
-      _ => Colors.amber,
-    };
+    final leftReady = state.phase == GloveConnectionPhase.ready;
+    final rightReady = rightState.phase == GloveConnectionPhase.ready;
+    final anyBusy = _busy(state.phase) || _busy(rightState.phase);
+
+    final dotColor = (leftReady || rightReady)
+        ? Colors.green
+        : anyBusy
+            ? Colors.amber
+            : scheme.outline;
 
     final battery = status?.batteryPercent;
     final batteryLow = battery != null && battery < 15;
     final errorLabel = _errorLabel(status?.lastErrorCode);
+    final uncalibrated = (status?.uncalibrated ?? false) ||
+        (rightStatus?.uncalibrated ?? false);
+    final gloveLabel = isMock ? AppStrings.mockGloveName : AppStrings.realGloveName;
+
+    final phaseText = (leftReady && rightReady)
+        ? '${_phaseLabel(state.phase)} · L + R'
+        : rightReady
+            ? '${AppStrings.connected} (R)'
+            : _phaseLabel(state.phase);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -69,8 +96,7 @@ class DeviceStatusBar extends ConsumerWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '${isMock ? AppStrings.mockGloveName : AppStrings.realGloveName}'
-                ' · ${_phaseLabel(state.phase)}',
+                '$gloveLabel · $phaseText',
                 style: Theme.of(context).textTheme.bodyMedium,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -112,8 +138,7 @@ class DeviceStatusBar extends ConsumerWidget {
               ),
             // STATUS flags bit0: the glove streams placeholder angles until
             // the calibration wizard completes (Code Reference §5.3).
-            if (status?.uncalibrated == true &&
-                state.phase == GloveConnectionPhase.ready)
+            if (uncalibrated && (leftReady || rightReady))
               Padding(
                 padding: const EdgeInsets.only(left: 8),
                 child: Chip(
@@ -144,7 +169,7 @@ class DeviceStatusBar extends ConsumerWidget {
               ),
           ],
         ),
-        if (state.connectionLost)
+        if (state.connectionLost || rightState.connectionLost)
           Container(
             key: connectionLostBannerKey,
             margin: const EdgeInsets.only(top: 6),

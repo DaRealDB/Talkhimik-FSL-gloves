@@ -32,10 +32,19 @@ import 'glove_connection.dart';
 /// guarantees this class is only constructed on Android/iOS.
 class FlutterBlueGloveConnection implements GloveConnection {
   FlutterBlueGloveConnection({
+    this.hand = GloveHand.left,
     this.permissions = const PermissionHandlerBlePermissions(),
     this.scanTimeout = const Duration(seconds: 15),
     this.connectTimeout = const Duration(seconds: 15),
   });
+
+  /// Which glove this connection binds to; the scan matches the full
+  /// advertised name TALKHIMIK-L / TALKHIMIK-R (master §7.3).
+  final GloveHand hand;
+
+  /// The advertised name this connection's scan looks for.
+  static String advertisedNameFor(GloveHand hand) =>
+      '${GattIds.deviceNamePrefix}-${hand == GloveHand.left ? 'L' : 'R'}';
 
   final BlePermissions permissions;
 
@@ -95,23 +104,25 @@ class FlutterBlueGloveConnection implements GloveConnection {
         await FlutterBluePlus.turnOn();
       }
 
-      // 3. Scan for a glove by advertised name prefix (C-F4). Deliberately
-      //    UNFILTERED: ColorOS and other OEM stacks throttle/drop service-
-      //    UUID-filtered LE scans into zero results, and a name-prefix match
-      //    in Dart is reliable everywhere. Step 5's GATT discovery still
-      //    validates the service contract.
+      // 3. Scan for this connection's glove by its full advertised name
+      //    (C-F4, master §7.3: the L/R suffix decides the hand).
+      //    Deliberately UNFILTERED: ColorOS and other OEM stacks
+      //    throttle/drop service-UUID-filtered LE scans into zero results,
+      //    and a name match in Dart is reliable everywhere. Step 5's GATT
+      //    discovery still validates the service contract.
       _addPhase(GloveConnectionPhase.scanning);
+      final advertisedName = advertisedNameFor(hand);
       await FlutterBluePlus.startScan(timeout: scanTimeout);
       final ScanResult result;
       try {
         result = await FlutterBluePlus.onScanResults
             .expand((results) => results)
-            .firstWhere((r) => r.advertisementData.advName
-                .startsWith(GattIds.deviceNamePrefix))
+            .firstWhere((r) => r.advertisementData.advName == advertisedName)
             .timeout(scanTimeout);
       } on TimeoutException {
-        throw StateError('No "${GattIds.deviceNamePrefix}-*" glove found '
-            'within ${scanTimeout.inSeconds} s');
+        throw StateError(
+            'Glove "$advertisedName" not found within '
+            '${scanTimeout.inSeconds} s');
       }
       if (FlutterBluePlus.isScanningNow) {
         await FlutterBluePlus.stopScan();

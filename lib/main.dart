@@ -9,6 +9,7 @@ import 'application/providers.dart';
 import 'data/glove/glove_connection_factory.dart';
 import 'data/storage/hive_log_store.dart';
 import 'data/storage/settings_service.dart';
+import 'domain/models/telemetry_packet.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,15 +24,19 @@ Future<void> main() async {
   await logStore.init();
 
   // FR field-testing aid: the "Force mock" setting swaps the connection at
-  // startup (the real BLE client is Android-only anyway).
+  // startup (the real BLE client is Android-only anyway). One connection
+  // per glove (master §7.3): the keep-area primary is the LEFT hand.
   final settingsService = SharedPrefsSettingsService();
   final forceMock = await settingsService.forceMock();
   final glove = GloveConnectionFactory.create(forceMock: forceMock);
+  final rightGlove = GloveConnectionFactory.createForHand(GloveHand.right,
+      forceMock: forceMock);
 
   final container = ProviderContainer(
     overrides: [
       logStoreProvider.overrideWithValue(logStore),
       gloveConnectionProvider.overrideWithValue(glove),
+      rightGloveConnectionProvider.overrideWithValue(rightGlove),
     ],
   );
   runApp(UncontrolledProviderScope(container: container, child: const TalkhimikApp()));

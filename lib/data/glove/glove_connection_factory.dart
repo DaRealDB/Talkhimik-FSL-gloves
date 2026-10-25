@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 
+import '../../domain/models/telemetry_packet.dart';
 import 'glove_connection.dart';
 import 'glove_connection_fbp.dart';
 import 'mock_glove_connection.dart';
@@ -16,9 +17,17 @@ import 'mock_glove_connection.dart';
 class GloveConnectionFactory {
   GloveConnectionFactory._();
 
-  static GloveConnection create({bool forceMock = false}) {
+  /// The keep-area primary connection — the LEFT glove (master §7.3 binds
+  /// the transcript/demo path to it).
+  static GloveConnection create({bool forceMock = false}) =>
+      createForHand(GloveHand.left, forceMock: forceMock);
+
+  /// One connection per glove; [hand] binds the BLE scan to the full
+  /// advertised name TALKHIMIK-L / TALKHIMIK-R.
+  static GloveConnection createForHand(GloveHand hand,
+          {bool forceMock = false}) {
     final onMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
-    return createWith(onMobile: onMobile, forceMock: forceMock);
+    return createWith(onMobile: onMobile, forceMock: forceMock, hand: hand);
   }
 
   /// Test seam: platform detection overridden so the Android/iOS branch is
@@ -26,8 +35,9 @@ class GloveConnectionFactory {
   static GloveConnection createWith({
     required bool onMobile,
     required bool forceMock,
+    GloveHand hand = GloveHand.left,
   }) =>
       (onMobile && !forceMock)
-          ? FlutterBlueGloveConnection()
+          ? FlutterBlueGloveConnection(hand: hand)
           : MockGloveConnection();
 }

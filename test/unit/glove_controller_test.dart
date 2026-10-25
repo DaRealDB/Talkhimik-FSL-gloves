@@ -239,4 +239,33 @@ void main() {
     await c.read(gloveControllerProvider.notifier).connect();
     expect(state(c).connectError, isNull);
   });
+
+  test('the right-hand controller drives its own connection and backoff '
+      'without touching the left (master §7.3)', () async {
+    requestedDelays = [];
+    final leftFake = FakeGloveConnection();
+    final rightFake = FakeGloveConnection();
+    final c = ProviderContainer(
+      overrides: [
+        gloveConnectionProvider.overrideWithValue(leftFake),
+        gloveControllerProvider
+            .overrideWith(() => GloveController(recordingDelay)),
+        rightGloveConnectionProvider.overrideWithValue(rightFake),
+        rightGloveControllerProvider.overrideWith(() =>
+            GloveController(recordingDelay, rightGloveConnectionProvider)),
+      ],
+    );
+    addTearDown(c.dispose);
+    c.read(rightGloveControllerProvider);
+
+    rightFake.emitPhase(GloveConnectionPhase.ready);
+    await pumpEventQueue();
+    rightFake.emitPhase(GloveConnectionPhase.disconnected);
+    await pumpEventQueue();
+    await flushAsync();
+
+    expect(rightFake.reconnectCalls, 1);
+    expect(leftFake.reconnectCalls, 0); // left connection untouched
+    expect(c.read(rightGloveControllerProvider).connectionLost, isTrue);
+  });
 }

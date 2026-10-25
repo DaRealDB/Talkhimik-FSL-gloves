@@ -13,6 +13,7 @@ import '../data/storage/settings_service.dart';
 import '../data/tts/flutter_tts_service.dart';
 import '../data/tts/tts_service.dart';
 import '../data/vocab/default_vocabulary_repository.dart';
+import '../domain/models/telemetry_packet.dart';
 import '../domain/repositories/log_store.dart';
 import '../domain/repositories/vocabulary_repository.dart';
 import 'calibration_controller.dart';
@@ -41,10 +42,24 @@ final logStoreProvider = Provider<LogStore>(
       'startup (see main.dart) or in tests'),
 );
 
-/// One connection instance for the app's lifetime.
+/// One connection instance for the app's lifetime. This is the LEFT glove
+/// (keep area: the transcript/demo path is bound to it); the right glove
+/// has its own connection + controller below (master §7.3).
 final gloveConnectionProvider = Provider<GloveConnection>(
   (ref) => GloveConnectionFactory.create(),
 );
+
+/// The right glove's connection — overridden at startup (main.dart) and in
+/// tests; the default is a second mock via the factory, like the left's.
+final rightGloveConnectionProvider = Provider<GloveConnection>(
+  (ref) => GloveConnectionFactory.createForHand(GloveHand.right),
+);
+
+/// Right glove's lifecycle controller: same phase/reconnect state machine
+/// as [gloveControllerProvider], bound to [rightGloveConnectionProvider].
+final rightGloveControllerProvider =
+    NotifierProvider<GloveController, GloveState>(
+        () => GloveController(Future<void>.delayed, rightGloveConnectionProvider));
 
 /// True when the active connection is the simulated glove — gates the
 /// dev-only demo controls.
