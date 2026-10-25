@@ -184,12 +184,8 @@ class _HandPanel extends ConsumerWidget {
               onPressed: () => _connectionFor(ref).sendCommand(
                   AppCommand.zeroYaw),
             ),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.vibration, size: 16),
-              label: const Text(AppStrings.vibrateTest),
-              onPressed: () => _connectionFor(ref).sendCommand(
-                  AppCommand.vibrate, value: 300),
-            ),
+            // Vibrate (0x08) stays reachable through the dev demo controls;
+            // it is a hardware test aid, not a product feature.
             FilledButton.tonalIcon(
               icon: const Icon(Icons.fiber_manual_record_outlined, size: 16),
               label: const Text(AppStrings.recordModeTitle),

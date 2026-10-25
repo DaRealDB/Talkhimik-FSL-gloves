@@ -98,7 +98,7 @@ void main() {
     expect(find.text(AppStrings.handMismatchWarning), findsOneWidget);
   });
 
-  testWidgets('zero-yaw and vibrate send commands to the owning glove',
+  testWidgets('zero-yaw sends the command to the owning glove',
       (tester) async {
     useTallWindow(tester);
     await tester.pumpWidget(wrap());
@@ -106,7 +106,7 @@ void main() {
     right.emitTelemetry(frame(1, hand: GloveHand.right));
     await tester.pump(const Duration(milliseconds: 100));
 
-    // The right-hand panel's buttons target the right connection.
+    // The right-hand panel's button targets the right connection.
     final rightZeroYaw = find
         .widgetWithText(OutlinedButton, AppStrings.zeroYaw)
         .last;
