@@ -6,6 +6,7 @@ import 'package:talkhimik_app/domain/models/device_status.dart';
 import 'package:talkhimik_app/domain/models/telemetry_packet.dart';
 
 import '../helpers/fake_glove_connection.dart';
+import '../helpers/in_memory_calinfo_cache.dart';
 
 TelemetryPacket frame(int seq,
         {GloveHand hand = GloveHand.left, required DateTime at}) =>
@@ -30,6 +31,7 @@ void main() {
     final c = ProviderContainer(
       overrides: [
         gloveConnectionProvider.overrideWithValue(left),
+        calInfoCacheProvider.overrideWithValue(InMemoryCalInfoCache()),
         rightGloveConnectionProvider.overrideWithValue(right),
       ],
     );
@@ -80,7 +82,10 @@ void main() {
   test('status and CAL_INFO fold into the hand state', () async {
     final left = FakeGloveConnection();
     final c = ProviderContainer(
-      overrides: [gloveConnectionProvider.overrideWithValue(left)],
+      overrides: [
+        gloveConnectionProvider.overrideWithValue(left),
+        calInfoCacheProvider.overrideWithValue(InMemoryCalInfoCache()),
+      ],
     );
     addTearDown(c.dispose);
     c.read(liveControllerProvider);

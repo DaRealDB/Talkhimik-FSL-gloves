@@ -69,24 +69,25 @@ class AppStrings {
   static const replyHint = 'Type a reply for the signer…';
   static const sendReply = 'Send reply';
 
-  // Calibration (FR-8)
+  // Calibration wizard (master §4)
   static const calibrationTitle = 'Calibration';
-  static const calibrationIntroTitle = 'Calibrate the glove to the signer';
-  static const calibrationIntroBody = 'A guided flow prompts sample signs and '
-      'computes a per-user calibration profile that adjusts inference to '
-      'this signer. Each prompted letter is signed a few times; the glove\'s '
-      'reported confidence per sign is stored in the profile.';
-  static const calibrationNeedsParticipant =
-      'Set the participant ID in Settings before calibrating (FR-13).';
+  static const calibrationPickHand = 'Choose the glove to calibrate';
   static const calibrationStart = 'Start calibration';
-  static const calibrationAbort = 'Abort';
-  static const calibrationSignPrompt = 'Sign this:';
-  static const calibrationRepsOf = 'reps';
-  static const calibrationLastSample = 'Last sample';
+  static const calibrationAbort = 'Cancel';
+  static const calibrationCapture = 'Capture';
+  static const calibrationCapturing = 'Capturing…';
+  static const calibrationDone = 'Done';
   static const calibrationSavedTitle = 'Calibration profile saved';
   static const calibrationNoProfile = 'No calibration profile yet.';
   static const calibrationProfileSummary = 'Current profile';
-  static const calibrationDone = 'Done';
+  static const calibrationSpanReject = 'Bend further and try again.';
+  static const calibrationWiringWarning = 'Check the wiring on this finger.';
+  static const calibrationUnknownCommand = 'The glove did not understand '
+      'that command.';
+  static String calibrationFlatPrompt(String finger) =>
+      'Hold your $finger flat';
+  static String calibrationBendPrompt(String finger) =>
+      'Bend your $finger to 90°';
 
   // Record mode (FR-9)
   static const recordModeTitle = 'Record mode';

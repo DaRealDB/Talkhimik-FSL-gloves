@@ -91,6 +91,10 @@ class LiveController extends Notifier<LiveState> {
   }
 
   void _onCalInfo(GloveHand expected, CalInfoPacket c) {
+    // Mirror into the per-hand cache (master §4.5) — this controller is
+    // always bound, so every CAL_INFO notify lands here; the glove's NVS
+    // stays the authority.
+    unawaited(ref.read(calInfoCacheProvider).save(expected, c));
     final isLeft = expected == GloveHand.left;
     final current = isLeft ? state.left : state.right;
     final next = current.copyWith(calInfo: c);

@@ -46,4 +46,34 @@ class CalInfoPacket {
 
   /// Firmware version as ASCII, zero-padded (e.g. '1.2.0').
   final String firmwareVersion;
+
+  /// JSON round-trip for the CalInfo cache (mirror only — the glove's NVS
+  /// stays authoritative, master §4.1).
+  Map<String, Object?> toJson() => {
+        'validMask': validMask,
+        'weakMask': weakMask,
+        'calibrationId': calibrationId,
+        'flatOhm': flatOhm,
+        'bent90Ohm': bent90Ohm,
+        'flatAdc': flatAdc,
+        'bent90Adc': bent90Adc,
+        'rDiv': rDiv,
+        'spanCounts': spanCounts,
+        'firmwareVersion': firmwareVersion,
+      };
+
+  static CalInfoPacket fromJson(Map<String, Object?> json) => CalInfoPacket(
+        validMask: json['validMask'] as int,
+        weakMask: json['weakMask'] as int,
+        calibrationId: json['calibrationId'] as int,
+        flatOhm: [for (final v in json['flatOhm'] as List) (v as num).toDouble()],
+        bent90Ohm: [
+          for (final v in json['bent90Ohm'] as List) (v as num).toDouble(),
+        ],
+        flatAdc: [for (final v in json['flatAdc'] as List) v as int],
+        bent90Adc: [for (final v in json['bent90Adc'] as List) v as int],
+        rDiv: [for (final v in json['rDiv'] as List) (v as num).toDouble()],
+        spanCounts: [for (final v in json['spanCounts'] as List) v as int],
+        firmwareVersion: json['firmwareVersion'] as String,
+      );
 }

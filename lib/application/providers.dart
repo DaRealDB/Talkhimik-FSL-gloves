@@ -8,7 +8,7 @@ import '../core/constants/app_version.dart';
 import '../data/glove/glove_connection.dart';
 import '../data/glove/glove_connection_factory.dart';
 import '../data/glove/mock_glove_connection.dart';
-import '../data/storage/calibration_store.dart';
+import '../data/storage/calinfo_cache.dart';
 import '../data/storage/settings_service.dart';
 import '../data/tts/flutter_tts_service.dart';
 import '../data/tts/tts_service.dart';
@@ -106,10 +106,11 @@ final exportDirectoryProvider = Provider<Future<Directory>>((ref) async {
 final exportControllerProvider =
     NotifierProvider<ExportController, ExportState>(ExportController.new);
 
-/// FR-8: per-user calibration profile storage (shared_preferences JSON);
-/// overridden with an in-memory store in tests.
-final calibrationProfileStoreProvider = Provider<CalibrationProfileStore>(
-  (ref) => SharedPrefsCalibrationProfileStore(),
+/// FR-8 (master §4.5): last-known CAL_INFO mirror per hand — the glove's
+/// NVS stays the calibration authority; this cache only displays and feeds
+/// sidecars. Overridden with an in-memory store in tests.
+final calInfoCacheProvider = Provider<CalInfoCache>(
+  (ref) => SharedPrefsCalInfoCache(),
 );
 
 final calibrationControllerProvider =
