@@ -1,12 +1,17 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/calibration_controller.dart';
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/motion.dart';
 import '../../domain/models/calibration_table.dart';
 import '../../domain/models/telemetry_packet.dart';
+import '../widgets/anim.dart';
 import '../widgets/header_band.dart';
 
 /// Firmware-driven 10-step calibration wizard (master §4). The step shown
@@ -111,8 +116,15 @@ class _Running extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        LinearProgressIndicator(
-          value: state.step == 0 ? 0 : state.step / 10,
+        // Progress eases toward STATUS.step (driven only by the glove).
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: state.step == 0 ? 0 : state.step / 10),
+          duration: TalkhimikMotion.of(context).resolve(
+              context, TalkhimikMotion.values.quick),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, _) => LinearProgressIndicator(
+            value: value,
+          ),
         ),
         const SizedBox(height: 16),
         Text(
@@ -123,19 +135,86 @@ class _Running extends ConsumerWidget {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 24),
-        Text(
-          state.step == 0 ? AppStrings.calibrationStart : prompt,
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        if (state.step == 0)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              AppStrings.calibrationFlatPrompt(fingerNames[0]),
-              style: TextStyle(color: scheme.onSurfaceVariant),
+        AnimatedSwitcher(
+          duration: TalkhimikMotion.of(context).resolve(
+              context, TalkhimikMotion.values.quick),
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0.15, 0),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
             ),
           ),
-        if (state.error != null) ...[
+          child: Column(
+            key: ValueKey(state.step),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // Flat ↔ 90° instruction: a hand-line icon rotating with
+                  // the step phase.
+                  AnimatedRotation(
+                    turns: state.isFlatStep ? 0 : 0.25,
+                    duration: TalkhimikMotion.of(context).resolve(
+                        context, TalkhimikMotion.values.standard),
+                    child: Icon(
+                      Icons.back_hand_outlined,
+                      size: 28,
+                      color: scheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      state.step == 0
+                          ? AppStrings.calibrationStart
+                          : prompt,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                ],
+              ),
+              if (state.step == 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, left: 40),
+                  child: Text(
+                    AppStrings.calibrationFlatPrompt(fingerNames[0]),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        // Error 3: one quick horizontal shake per rejection (zeroed under
+        // reduce-motion via the motion tokens).
+        if (state.error == AppStrings.calibrationSpanReject) ...[
+          const SizedBox(height: 16),
+          KeyedOneShot(
+            trigger: '${state.step}-${state.error}',
+            builder: (t, context) => Transform.translate(
+              offset: Offset(
+                  math.sin(t.value * math.pi * 4) * 6 * (1 - t.value), 0),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(state.error!,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: scheme.onErrorContainer)),
+              ),
+            ),
+          ),
+        ] else if (state.error != null) ...[
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
@@ -144,18 +223,42 @@ class _Running extends ConsumerWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(state.error!,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onErrorContainer)),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: scheme.onErrorContainer)),
           ),
         ],
         const SizedBox(height: 24),
-        FilledButton.icon(
-          icon: const Icon(Icons.check_circle_outline),
-          label: Text(state.capturePending
-              ? AppStrings.calibrationCapturing
-              : AppStrings.calibrationCapture),
-          onPressed: (state.step == 0 || state.capturePending)
+        PressScale(
+          onTap: (state.step == 0 || state.capturePending)
               ? null
-              : controller.capture,
+              : () async {
+                  await ref
+                      .read(calibrationControllerProvider.notifier)
+                      .capture();
+                  // Accepted captures get a light haptic tick; a
+                  // rejection (error 3) stays quiet.
+                  final current =
+                      ref.read(calibrationControllerProvider);
+                  if (current.error != AppStrings.calibrationSpanReject) {
+                    HapticFeedback.selectionClick();
+                  }
+                },
+          child: FilledButton.icon(
+            icon: const Icon(Icons.check_circle_outline),
+            label: AnimatedSwitcher(
+              duration: TalkhimikMotion.of(context).resolve(
+                  context, TalkhimikMotion.values.instant),
+              child: Text(
+                state.capturePending
+                    ? AppStrings.calibrationCapturing
+                    : AppStrings.calibrationCapture,
+                key: ValueKey(state.capturePending),
+              ),
+            ),
+            onPressed: null,
+          ),
         ),
         const SizedBox(height: 8),
         OutlinedButton(
@@ -176,20 +279,36 @@ class _Done extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final summary =
         state.calInfo == null ? null : CalibrationTable(state.calInfo!);
-    return ListView(
+    return HapticOnce(
+      child: ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Icon(Icons.check_circle, size: 48),
+        // Success moment: checkmark draws in once with a springy pop
+        // (zeroed under reduce-motion), and the calibration id counts up.
+        KeyedOneShot(
+          trigger: summary?.calibrationId,
+          builder: (t, context) => Transform.scale(
+            scale: Curves.elasticOut.transform(t.value).clamp(0.0, 1.0),
+            child: Icon(Icons.check_circle,
+                size: 48, color: Theme.of(context).colorScheme.primary),
+          ),
+        ),
         const SizedBox(height: 8),
         Text(AppStrings.calibrationSavedTitle,
             style: Theme.of(context).textTheme.titleLarge),
         if (summary != null) ...[
           const SizedBox(height: 12),
-          Text(
-              'cal_id ${summary.calibrationId}'
+          TweenAnimationBuilder<int>(
+            tween: IntTween(begin: 0, end: summary.calibrationId),
+            duration: TalkhimikMotion.of(context).resolve(
+                context, TalkhimikMotion.values.standard),
+            builder: (context, value, _) => Text(
+              'cal_id $value'
               ' · fw ${summary.firmwareVersion}'
               ' · R_DIV ${summary.packet.rDiv.map((v) => v.toStringAsFixed(0)).join(', ')}',
-              style: Theme.of(context).textTheme.bodySmall),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
           const SizedBox(height: 12),
           _SummaryTable(table: summary),
         ],
@@ -200,6 +319,7 @@ class _Done extends ConsumerWidget {
           child: const Text(AppStrings.calibrationDone),
         ),
       ],
+      ),
     );
   }
 }

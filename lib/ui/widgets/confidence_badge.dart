@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/confidence.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/motion.dart';
 
 /// Color-coded confidence pill: green ≥80 / amber 60–79 / red <60 (SRS FR-4;
 /// thresholds live in core/constants/confidence.dart).
@@ -26,7 +27,13 @@ class ConfidenceBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // AnimatedContainer: the badge eases to a new level color instead of
+    // snapping (motion pass); the outline style keeps it distinct from
+    // brand surfaces.
+    return AnimatedContainer(
+      duration: TalkhimikMotion.of(context)
+          .resolve(context, TalkhimikMotion.values.quick),
+      curve: Curves.easeOut,
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: _color.withValues(alpha: 0.18),

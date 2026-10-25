@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/motion.dart';
 import '../../domain/models/telemetry_packet.dart';
 import 'header_band.dart';
 
@@ -127,8 +128,10 @@ class _HandViewState extends State<HandView>
               bottom: Radius.circular(16),
             ),
           ),
-          child: Opacity(
+          child: AnimatedOpacity(
             opacity: widget.stale ? 0.4 : 1,
+            duration: TalkhimikMotion.of(context)
+                .resolve(context, TalkhimikMotion.values.quick),
             child: RepaintBoundary(
               child: CustomPaint(
                 size: const Size(220, 220),

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../application/dataset_recorder_controller.dart';
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
+import '../../core/theme/app_theme.dart';
+import '../widgets/anim.dart';
 import '../widgets/header_band.dart';
 
 /// Dataset recorder screen (master §5): labeled takes at 5 Hz per glove,
@@ -103,6 +106,8 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
                         RecordingPhase.recording) {
                       await recorder
                           .startTake(_labelController.text);
+                      // Light haptic on recording start (motion pass).
+                      HapticFeedback.selectionClick();
                     }
                   },
                 )
@@ -111,6 +116,7 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
                   icon: const Icon(Icons.stop),
                   label: const Text(AppStrings.recordAbort),
                   onPressed: () async {
+                    HapticFeedback.selectionClick();
                     await recorder.stopTake();
                     await recorder.stop();
                   },
@@ -131,11 +137,30 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
           ),
           if (recording) ...[
             const SizedBox(height: 12),
-            Text(
-              '${AppStrings.datasetRecording}: '
-              '${state.active.values.map((s) => '${s.handTag} ${s.rows} '
-                      '${AppStrings.datasetRows}').join(' · ')}',
-              style: Theme.of(context).textTheme.bodyMedium,
+            Row(
+              children: [
+                // Pulsing recording dot (static under reduce-motion/tests).
+                LoopPulse(
+                  scale: 1.4,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: AppColors.danger,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${AppStrings.datasetRecording}: '
+                    '${state.active.values.map((s) => '${s.handTag} ${s.rows} '
+                            '${AppStrings.datasetRows}').join(' · ')}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ],
             ),
           ],
           const SizedBox(height: 24),
@@ -143,7 +168,9 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           for (final s in state.sessions)
-            Card(
+            FadeIn(
+              key: ValueKey('session-${s.sessionId}'),
+              child: Card(
               child: ListTile(
                 title: Text(
                     '${s.handTag} · ${s.signerId} · cal_id ${s.calibrationId}'),
@@ -172,6 +199,7 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
                     ),
                   ],
                 ),
+              ),
               ),
             ),
               ],

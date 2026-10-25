@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import 'anim.dart';
 
 /// Olive-lime header band with the deep-green diagonal corner — the shared
 /// design-language element for panel headers across screens.
@@ -44,20 +45,30 @@ class HeaderBand extends StatelessWidget {
             ),
             if (chipLabel != null)
               Flexible(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: tokens.headerDark,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    chipLabel!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Colors.white,
-                        ),
+                child: KeyedOneShot(
+                  // One-shot highlight when the chip content changes
+                  // (e.g. calibration_id bump on Live).
+                  trigger: chipLabel,
+                  builder: (t, context) => Transform.scale(
+                    scale: 0.94 + 0.06 * t.value,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Color.lerp(tokens.headerDark,
+                            tokens.header, t.value),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        chipLabel!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
+                            ?.copyWith(color: Colors.white),
+                      ),
+                    ),
                   ),
                 ),
               ),

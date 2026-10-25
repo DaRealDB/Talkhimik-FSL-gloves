@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/motion.dart';
 import '../../data/glove/glove_connection.dart';
 import '../../data/glove/mock_glove_connection.dart';
 import '../../domain/models/device_status.dart';
+import 'anim.dart';
 
 /// One-line connection status: pairing phase, glove name (mock vs real),
 /// battery, error states, and the "connection lost" banner (SRS FR-12,
@@ -96,17 +98,29 @@ class DeviceStatusBar extends ConsumerWidget {
       children: [
         Row(
           children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+            // Subtle looping pulse while scanning/connecting (static at
+            // rest, under reduce-motion, and in tests — see anim.dart).
+            LoopPulse(
+              scale: 1.25,
+              pulse: anyBusy && !(leftReady || rightReady),
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration:
+                    BoxDecoration(color: dotColor, shape: BoxShape.circle),
+              ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                '$gloveLabel · $phaseText',
-                style: Theme.of(context).textTheme.bodyMedium,
-                overflow: TextOverflow.ellipsis,
+              child: AnimatedSwitcher(
+                duration: TalkhimikMotion.of(context).resolve(
+                    context, TalkhimikMotion.values.quick),
+                child: Text(
+                  '$gloveLabel · $phaseText',
+                  key: ValueKey('$gloveLabel · $phaseText'),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
             // Trailing cluster wraps instead of overflowing at narrow

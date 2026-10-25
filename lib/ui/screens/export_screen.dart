@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
+import '../widgets/anim.dart';
 import '../widgets/header_band.dart';
 
 /// FR-16: sessions grouped by participant, with per-session CSV export and
@@ -26,13 +27,15 @@ class ExportScreen extends ConsumerWidget {
           ),
           Expanded(
             child: state.summaries.isEmpty
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Text(
-                        'No sessions yet. Recognized gestures appear here '
-                        'once logging starts.',
-                        textAlign: TextAlign.center,
+                ? FadeIn(
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'No sessions yet. Recognized gestures appear here '
+                          'once logging starts.',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
                   )

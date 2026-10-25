@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/transcript_entry.dart';
+import 'anim.dart';
 import 'confidence_badge.dart';
 
 /// One chat-style bubble (SRS FR-3): signed entries sit on the left with a
@@ -37,48 +38,62 @@ class TranscriptBubble extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isPartner = entry.kind == TranscriptKind.partner;
 
-    final bubble = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isPartner ? scheme.primaryContainer : scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(14),
-          topRight: const Radius.circular(14),
-          bottomLeft: Radius.circular(isPartner ? 14 : 3),
-          bottomRight: Radius.circular(isPartner ? 3 : 14),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            entry.textFor(language),
-            style: isPartner
-                // Signer-facing large text (FR-7, NFR-7): the toggle
-                // switches 22 ↔ 16, now via the title/body scales.
-                ? (largeText
-                        ? Theme.of(context).textTheme.titleLarge
-                        : Theme.of(context).textTheme.bodyLarge)
-                    ?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                  )
-                : TalkhimikText.of(context)
-                    .transcriptWord
-                    ?.copyWith(color: scheme.onSurface),
+    // Bubbles enter with a quick slide-up + fade (motion pass); the
+    // animation is keyed to the entry id so each new bubble animates once
+    // and content is never delayed (NFR-1).
+    final bubble = FadeIn(
+      key: ValueKey('bubble-${entry.id}'),
+      offset: 8,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isPartner
+              ? scheme.primaryContainer
+              : scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(14),
+            topRight: const Radius.circular(14),
+            bottomLeft: Radius.circular(isPartner ? 14 : 3),
+            bottomRight: Radius.circular(isPartner ? 3 : 14),
           ),
-          if (entry.corrected) ...[
-            const SizedBox(height: 2),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
             Text(
-              'corrected',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: scheme.outline),
+              entry.textFor(language),
+              style: isPartner
+                  // Signer-facing large text (FR-7, NFR-7): the toggle
+                  // switches 22 ↔ 16, now via the title/body scales.
+                  ? (largeText
+                          ? Theme.of(context).textTheme.titleLarge
+                          : Theme.of(context).textTheme.bodyLarge)
+                      ?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface,
+                    )
+                  : TalkhimikText.of(context)
+                      .transcriptWord
+                      ?.copyWith(color: scheme.onSurface),
             ),
+            if (entry.corrected) ...[
+              const SizedBox(height: 2),
+              // One-shot highlight when a bubble flips to corrected.
+              KeyedOneShot(
+                trigger: '${entry.id}-corrected',
+                builder: (t, context) => Text(
+                  'corrected',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Color.lerp(scheme.outline, AppColors.success,
+                            (1 - t.value) * 0.7),
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
 

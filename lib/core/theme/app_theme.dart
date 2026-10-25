@@ -267,6 +267,18 @@ ThemeData _base(ColorScheme scheme, TalkhimikTokens tokens) => ThemeData(
       textTheme: _buildTextTheme(scheme.onSurface),
       useMaterial3: true,
       extensions: [tokens, _buildTalkhimikText(), TalkhimikMotion.values],
+      // Shared fade-through page transition (≤ 280 ms) + brand-tinted
+      // ripples for the pill microinteractions.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(),
+        },
+      ),
+      splashColor: AppColors.brandGreen.withValues(alpha: 0.15),
+      highlightColor: AppColors.brandGreen.withValues(alpha: 0.08),
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,

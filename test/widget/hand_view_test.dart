@@ -50,9 +50,11 @@ void main() {
   testWidgets('stale hands render at 40 % opacity', (tester) async {
     await tester.pumpWidget(
         wrap(HandView(target: pose(), title: 'Right hand', stale: true)));
-    await tester.pump(const Duration(milliseconds: 100));
+    // The stale fade is animated (motion pass); settle to the target.
+    await tester.pump(const Duration(milliseconds: 300));
 
-    final opacity = tester.widget<Opacity>(find.byType(Opacity).first);
+    final opacity = tester
+        .widget<AnimatedOpacity>(find.byType(AnimatedOpacity).first);
     expect(opacity.opacity, 0.4);
   });
 
