@@ -109,84 +109,97 @@ class DeviceStatusBar extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (battery != null)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Row(
-                  key: batteryKey,
-                  children: [
-                    Icon(
-                      batteryLow
-                          ? Icons.battery_alert
-                          : Icons.battery_full_outlined,
-                      size: 16,
-                      color: batteryLow ? scheme.error : scheme.onSurfaceVariant,
+            // Trailing cluster wraps instead of overflowing at narrow
+            // widths / large text scales (typography pass).
+            Flexible(
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 4,
+                runSpacing: 4,
+                children: [
+                  if (battery != null)
+                    Row(
+                      key: batteryKey,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          batteryLow
+                              ? Icons.battery_alert
+                              : Icons.battery_full_outlined,
+                          size: 16,
+                          color: batteryLow
+                              ? scheme.error
+                              : scheme.onSurfaceVariant,
+                        ),
+                        Text(
+                          '$battery%',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelLarge
+                              ?.copyWith(
+                                color: batteryLow ? scheme.error : null,
+                                fontWeight: batteryLow
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      '$battery%',
-                      style: TextStyle(
-                        color: batteryLow ? scheme.error : null,
-                        fontWeight:
-                            batteryLow ? FontWeight.bold : FontWeight.normal,
-                      ),
+                  if (errorLabel.isNotEmpty)
+                    Chip(
+                      key: errorChipKey,
+                      label: Text(errorLabel),
+                      labelStyle: Theme.of(context)
+                          .textTheme
+                          .labelMedium
+                          ?.copyWith(color: scheme.onErrorContainer),
+                      backgroundColor: scheme.errorContainer,
+                      visualDensity: VisualDensity.compact,
                     ),
-                  ],
-                ),
+                  // STATUS flags bit0: the glove streams placeholder angles
+                  // until the calibration wizard completes (§5.3).
+                  if (uncalibrated && (leftReady || rightReady))
+                    Chip(
+                      key: uncalibratedChipKey,
+                      label: const Text(AppStrings.uncalibrated),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  // The right glove's source, shown once it is up — the
+                  // left glove's source is the main label.
+                  if (rightReady)
+                    Chip(
+                      key: rightSourceChipKey,
+                      label: Text(
+                          'R · ${rightIsMock ? AppStrings.mockGloveName : AppStrings.realGloveName}'),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  // The real glove connects explicitly (C-S1); the mock
+                  // auto-connects on the home screen.
+                  if (!isMock &&
+                      state.phase == GloveConnectionPhase.disconnected)
+                    IconButton(
+                      key: connectButtonKey,
+                      tooltip: AppStrings.connectGlove,
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.bluetooth_searching),
+                      onPressed: () async {
+                        await ref
+                            .read(gloveControllerProvider.notifier)
+                            .connect();
+                        if (!context.mounted) return;
+                        final error =
+                            ref.read(gloveControllerProvider).connectError;
+                        if (error != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error)),
+                          );
+                        }
+                      },
+                    ),
+                ],
               ),
-            if (errorLabel.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Chip(
-                  key: errorChipKey,
-                  label: Text(errorLabel),
-                  labelStyle: TextStyle(color: scheme.onErrorContainer),
-                  backgroundColor: scheme.errorContainer,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            // STATUS flags bit0: the glove streams placeholder angles until
-            // the calibration wizard completes (Code Reference §5.3).
-            if (uncalibrated && (leftReady || rightReady))
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Chip(
-                  key: uncalibratedChipKey,
-                  label: const Text(AppStrings.uncalibrated),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            // The right glove's source, shown once it is up — the left
-            // glove's source is the main label.
-            if (rightReady)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Chip(
-                  key: rightSourceChipKey,
-                  label: Text(
-                      'R · ${rightIsMock ? AppStrings.mockGloveName : AppStrings.realGloveName}'),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            // The real glove connects explicitly (C-S1); the mock
-            // auto-connects on the home screen.
-            if (!isMock && state.phase == GloveConnectionPhase.disconnected)
-              IconButton(
-                key: connectButtonKey,
-                tooltip: AppStrings.connectGlove,
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.bluetooth_searching),
-                onPressed: () async {
-                  await ref.read(gloveControllerProvider.notifier).connect();
-                  if (!context.mounted) return;
-                  final error =
-                      ref.read(gloveControllerProvider).connectError;
-                  if (error != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(error)),
-                    );
-                  }
-                },
-              ),
+            ),
           ],
         ),
         if (state.connectionLost || rightState.connectionLost)
@@ -200,7 +213,7 @@ class DeviceStatusBar extends ConsumerWidget {
             ),
             child: Text(
               AppStrings.connectionLost,
-              style: TextStyle(
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: scheme.onErrorContainer,
                 fontWeight: FontWeight.w600,
               ),

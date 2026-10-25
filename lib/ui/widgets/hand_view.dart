@@ -136,6 +136,7 @@ class _HandViewState extends State<HandView>
                   pose: _current,
                   uncalibrated: widget.uncalibrated,
                   tokens: tokens,
+                  text: TalkhimikText.of(context),
                 ),
               ),
             ),
@@ -154,11 +155,15 @@ class HandPainter extends CustomPainter {
     required this.pose,
     this.uncalibrated = false,
     required this.tokens,
+    required this.text,
   });
 
   final HandPose pose;
   final bool uncalibrated;
   final TalkhimikTokens tokens;
+
+  /// App typography styles for the badge text (never hard-coded sizes).
+  final TalkhimikText text;
 
   static const _fingerLengths = [0.85, 1.0, 1.0, 0.9, 0.7]; // relative
   static const _baseAngles = [-38.0, -14.0, 8.0, 30.0, 52.0]; // deg from up
@@ -297,9 +302,7 @@ class HandPainter extends CustomPainter {
       canvas,
       invalid ? '✗' : initial,
       center,
-      TextStyle(
-        fontSize: 10,
-        fontWeight: FontWeight.w700,
+      text.badge!.copyWith(
         color: invalid ? const Color(0xFF4A4944) : tokens.headerText,
       ),
     );
@@ -307,8 +310,7 @@ class HandPainter extends CustomPainter {
       canvas,
       invalid ? '' : '$angle°',
       center + const Offset(0, 22),
-      TextStyle(
-        fontSize: 9,
+      text.caption!.copyWith(
         fontWeight: FontWeight.w600,
         color: const Color(0xFF4A4944),
       ),

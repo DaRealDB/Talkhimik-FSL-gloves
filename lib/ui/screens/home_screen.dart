@@ -59,38 +59,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         title: const Text(AppStrings.appTitle),
         centerTitle: true,
+        // Six actions on a 360 dp phone: compact density keeps the row
+        // inside the bar without dropping any tool (typography pass).
         actions: [
-          IconButton(
-            tooltip: AppStrings.liveTitle,
-            icon: const Icon(Icons.back_hand_outlined),
-            onPressed: () => Navigator.of(context).pushNamed('/live'),
-          ),
-          IconButton(
-            tooltip: AppStrings.clearTranscript,
-            icon: const Icon(Icons.delete_sweep_outlined),
-            onPressed: () =>
-                ref.read(transcriptControllerProvider.notifier).clear(),
-          ),
-          IconButton(
-            tooltip: AppStrings.calibrationTitle,
-            icon: const Icon(Icons.tune_outlined),
-            onPressed: () => Navigator.of(context).pushNamed('/calibration'),
-          ),
-          IconButton(
-            tooltip: AppStrings.recordModeTitle,
-            icon: const Icon(Icons.fiber_manual_record_outlined),
-            onPressed: () => Navigator.of(context).pushNamed('/collect'),
-          ),
-          IconButton(
-            tooltip: 'Session logs',
-            icon: const Icon(Icons.file_download_outlined),
-            onPressed: () => Navigator.of(context).pushNamed('/export'),
-          ),
-          IconButton(
-            tooltip: 'Settings',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.of(context).pushNamed('/settings'),
-          ),
+          for (final (tooltip, icon, route) in [
+            (AppStrings.liveTitle, Icons.back_hand_outlined, '/live'),
+            (AppStrings.clearTranscript, Icons.delete_sweep_outlined, null),
+            (AppStrings.calibrationTitle, Icons.tune_outlined, '/calibration'),
+            (AppStrings.recordModeTitle, Icons.fiber_manual_record_outlined,
+                '/collect'),
+            ('Session logs', Icons.file_download_outlined, '/export'),
+            ('Settings', Icons.settings_outlined, '/settings'),
+          ])
+            IconButton(
+              tooltip: tooltip,
+              visualDensity: VisualDensity.compact,
+              icon: Icon(icon),
+              onPressed: () {
+                if (route != null) {
+                  Navigator.of(context).pushNamed(route);
+                } else {
+                  ref.read(transcriptControllerProvider.notifier).clear();
+                }
+              },
+            ),
         ],
       ),
       body: SafeArea(

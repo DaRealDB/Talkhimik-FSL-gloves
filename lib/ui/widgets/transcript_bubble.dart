@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../domain/models/transcript_entry.dart';
 import 'confidence_badge.dart';
 
@@ -53,17 +54,28 @@ class TranscriptBubble extends StatelessWidget {
         children: [
           Text(
             entry.textFor(language),
-            style: TextStyle(
-              fontSize: isPartner && largeText ? 22 : 16,
-              fontWeight: isPartner ? FontWeight.w600 : FontWeight.normal,
-              color: scheme.onSurface,
-            ),
+            style: isPartner
+                // Signer-facing large text (FR-7, NFR-7): the toggle
+                // switches 22 ↔ 16, now via the title/body scales.
+                ? (largeText
+                        ? Theme.of(context).textTheme.titleLarge
+                        : Theme.of(context).textTheme.bodyLarge)
+                    ?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
+                  )
+                : TalkhimikText.of(context)
+                    .transcriptWord
+                    ?.copyWith(color: scheme.onSurface),
           ),
           if (entry.corrected) ...[
             const SizedBox(height: 2),
             Text(
               'corrected',
-              style: TextStyle(fontSize: 10, color: scheme.outline),
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: scheme.outline),
             ),
           ],
         ],

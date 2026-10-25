@@ -110,6 +110,124 @@ class TalkhimikTokens extends ThemeExtension<TalkhimikTokens> {
 const _radiusCard = 16.0;
 const _radiusControl = 12.0;
 
+/// App-specific text styles (typography pass): the product's main text
+/// (transcriptWord) is the largest, most legible style; live numbers use
+/// tabular figures so digits never jitter.
+@immutable
+class TalkhimikText extends ThemeExtension<TalkhimikText> {
+  const TalkhimikText({
+    required this.bandTitle,
+    required this.transcriptWord,
+    required this.metric,
+    required this.id,
+    required this.caption,
+    required this.chip,
+    required this.badge,
+  });
+
+  final TextStyle? bandTitle;
+  final TextStyle? transcriptWord;
+  final TextStyle? metric;
+  final TextStyle? id;
+  final TextStyle? caption;
+  final TextStyle? chip;
+  final TextStyle? badge;
+
+  /// Plain fallback for contexts without a registered theme (tests that
+  /// pump under a default MaterialApp).
+  static const fallback = TalkhimikText(
+    bandTitle: TextStyle(fontWeight: FontWeight.w700),
+    transcriptWord: TextStyle(fontWeight: FontWeight.w600),
+    metric: TextStyle(),
+    id: TextStyle(),
+    caption: TextStyle(),
+    chip: TextStyle(),
+    badge: TextStyle(fontWeight: FontWeight.w700),
+  );
+
+  static TalkhimikText of(BuildContext context) =>
+      Theme.of(context).extension<TalkhimikText>() ?? fallback;
+
+  @override
+  TalkhimikText copyWith({
+    TextStyle? bandTitle,
+    TextStyle? transcriptWord,
+    TextStyle? metric,
+    TextStyle? id,
+    TextStyle? caption,
+    TextStyle? chip,
+    TextStyle? badge,
+  }) =>
+      TalkhimikText(
+        bandTitle: bandTitle ?? this.bandTitle,
+        transcriptWord: transcriptWord ?? this.transcriptWord,
+        metric: metric ?? this.metric,
+        id: id ?? this.id,
+        caption: caption ?? this.caption,
+        chip: chip ?? this.chip,
+        badge: badge ?? this.badge,
+      );
+
+  @override
+  TalkhimikText lerp(TalkhimikText? other, double t) {
+    if (other == null) return this;
+    return TalkhimikText(
+      bandTitle: TextStyle.lerp(bandTitle, other.bandTitle, t),
+      transcriptWord:
+          TextStyle.lerp(transcriptWord, other.transcriptWord, t),
+      metric: TextStyle.lerp(metric, other.metric, t),
+      id: TextStyle.lerp(id, other.id, t),
+      caption: TextStyle.lerp(caption, other.caption, t),
+      chip: TextStyle.lerp(chip, other.chip, t),
+      badge: TextStyle.lerp(badge, other.badge, t),
+    );
+  }
+}
+
+/// Inter type scale (bundled assets, typography pass). Sizes stay fixed —
+/// accessibility text scale is applied by MediaQuery, never by shrinking
+/// these values.
+TextTheme _buildTextTheme(Color onSurface) => const TextTheme(
+      displaySmall: TextStyle(fontSize: 36, fontWeight: FontWeight.w600, height: 44 / 36, letterSpacing: -0.5),
+      headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, height: 36 / 28),
+      headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, height: 32 / 24),
+      titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, height: 28 / 22),
+      titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, height: 24 / 16, letterSpacing: 0.15),
+      titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 20 / 14, letterSpacing: 0.1),
+      bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, height: 24 / 16, letterSpacing: 0.5),
+      bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, height: 20 / 14, letterSpacing: 0.25),
+      bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, height: 16 / 12, letterSpacing: 0.4),
+      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 20 / 14, letterSpacing: 0.1),
+      labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, height: 16 / 12, letterSpacing: 0.5),
+      labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, height: 16 / 11, letterSpacing: 0.5),
+    );
+
+TalkhimikText _buildTalkhimikText() => const TalkhimikText(
+      bandTitle: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          height: 20 / 16,
+          letterSpacing: 0.15),
+      transcriptWord: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w600,
+          height: 40 / 32,
+          letterSpacing: -0.25),
+      metric: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          height: 20 / 14,
+          fontFeatures: [FontFeature.tabularFigures()]),
+      id: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          height: 18 / 13,
+          fontFeatures: [FontFeature.tabularFigures()]),
+      caption: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, height: 16 / 12),
+      chip: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, height: 16 / 11),
+      badge: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, height: 16 / 11),
+    );
+
 ThemeData buildLightTheme() {
   final scheme = ColorScheme.fromSeed(
     seedColor: AppColors.brandGreen,
@@ -143,8 +261,10 @@ ThemeData buildDarkTheme() {
 
 ThemeData _base(ColorScheme scheme, TalkhimikTokens tokens) => ThemeData(
       colorScheme: scheme,
+      fontFamily: 'Inter',
+      textTheme: _buildTextTheme(scheme.onSurface),
       useMaterial3: true,
-      extensions: [tokens],
+      extensions: [tokens, _buildTalkhimikText()],
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/strings/app_strings.dart';
+import '../../core/theme/app_theme.dart';
 import '../../domain/models/hand_state.dart';
 
 /// One merged connection-health line per hand (master §6.1, simplified):
@@ -52,6 +53,10 @@ class ConnectionBadges extends StatelessWidget {
           color: bg,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(text, style: TextStyle(color: fg, fontSize: 12)),
+        child: Text(
+          text,
+          style:
+              TalkhimikText.of(context).caption?.copyWith(color: fg),
+        ),
       );
 }

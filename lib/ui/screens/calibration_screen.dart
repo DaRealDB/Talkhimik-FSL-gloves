@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/calibration_controller.dart';
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
+import '../../core/theme/app_theme.dart';
 import '../../domain/models/calibration_table.dart';
 import '../../domain/models/telemetry_packet.dart';
 import '../widgets/header_band.dart';
@@ -86,7 +87,7 @@ class _Idle extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(top: 16),
             child: Text(AppStrings.calibrationNoProfile,
-                style: TextStyle(color: scheme.onSurfaceVariant)),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
           ),
       ],
     );
@@ -143,7 +144,7 @@ class _Running extends ConsumerWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(state.error!,
-                style: TextStyle(color: scheme.onErrorContainer)),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onErrorContainer)),
           ),
         ],
         const SizedBox(height: 24),
@@ -236,12 +237,18 @@ class _SummaryTable extends StatelessWidget {
               child: Text(f.name),
             ),
             Text(f.valid ? '✓' : '✗',
-                style: TextStyle(
-                    color: f.valid ? Colors.green : scheme.error)),
-            Text(f.flatOhm.toStringAsFixed(0)),
-            Text(f.bent90Ohm.toStringAsFixed(0)),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: f.valid ? AppColors.success : scheme.error)),
+            Text(f.flatOhm.toStringAsFixed(0),
+                style: TalkhimikText.of(context).metric),
+            Text(f.bent90Ohm.toStringAsFixed(0),
+                style: TalkhimikText.of(context).metric),
             Text(f.weak ? '⚠ ${f.spanCounts}' : '${f.spanCounts}',
-                style: f.weak ? const TextStyle(color: Colors.amber) : null),
+                style: f.weak
+                    ? TalkhimikText.of(context)
+                        .metric
+                        ?.copyWith(color: AppColors.warning)
+                    : TalkhimikText.of(context).metric),
           ]),
       ],
     );

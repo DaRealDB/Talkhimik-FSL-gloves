@@ -45,11 +45,7 @@ class ConfidenceBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             '$confidence%',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: _color,
-            ),
+            style: TalkhimikText.of(context).badge?.copyWith(color: _color),
           ),
         ],
       ),

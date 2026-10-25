@@ -34,6 +34,8 @@ class HeaderBand extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: tokens.headerText,
                       fontWeight: FontWeight.w700,
@@ -41,18 +43,22 @@ class HeaderBand extends StatelessWidget {
               ),
             ),
             if (chipLabel != null)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: tokens.headerDark,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  chipLabel!,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Colors.white,
-                      ),
+              Flexible(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: tokens.headerDark,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    chipLabel!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Colors.white,
+                        ),
+                  ),
                 ),
               ),
           ],
