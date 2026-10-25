@@ -33,13 +33,25 @@ class ConfidenceBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: _color.withValues(alpha: 0.7)),
       ),
-      child: Text(
-        '$confidence%',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: _color,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Shape cue beyond color (design refresh): outline badge + dot.
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: _color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$confidence%',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: _color,
+            ),
+          ),
+        ],
       ),
     );
   }

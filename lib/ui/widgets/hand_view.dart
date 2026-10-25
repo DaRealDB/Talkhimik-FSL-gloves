@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../domain/models/telemetry_packet.dart';
+import 'header_band.dart';
 
 /// Plain pose values for [HandPainter] — no business logic here (master §6.2).
 class HandPose {
@@ -113,13 +114,7 @@ class _HandViewState extends State<HandView>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _HeaderBand(
-          title: widget.title ?? '',
-          chipLabel: widget.chipLabel,
-          header: tokens.header,
-          headerDark: tokens.headerDark,
-          headerText: tokens.headerText,
-        ),
+        HeaderBand(title: widget.title ?? '', chipLabel: widget.chipLabel),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
@@ -149,82 +144,6 @@ class _HandViewState extends State<HandView>
       ],
     );
   }
-}
-
-/// Olive-lime band with a deep-green diagonal corner (reference style).
-class _HeaderBand extends StatelessWidget {
-  const _HeaderBand({
-    required this.title,
-    required this.chipLabel,
-    required this.header,
-    required this.headerDark,
-    required this.headerText,
-  });
-
-  final String title;
-  final String? chipLabel;
-  final Color header;
-  final Color headerDark;
-  final Color headerText;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipPath(
-      clipper: _CornerClipper(corner: 22),
-      child: Container(
-        color: header,
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: headerText,
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-            ),
-            if (chipLabel != null)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: headerDark,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  chipLabel!,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Colors.white,
-                      ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Cuts the top-right diagonal corner (the deep-green triangle is drawn by
-/// a second band clipped to the same shape underneath).
-class _CornerClipper extends CustomClipper<Path> {
-  _CornerClipper({required this.corner});
-
-  final double corner;
-
-  @override
-  Path getClip(Size size) => Path()
-    ..moveTo(0, 0)
-    ..lineTo(size.width - corner, 0)
-    ..lineTo(size.width, corner)
-    ..lineTo(size.width, size.height)
-    ..lineTo(0, size.height)
-    ..close();
-
-  @override
-  bool shouldReclip(_CornerClipper oldClipper) => oldClipper.corner != corner;
 }
 
 /// Pure renderer for one hand (master §6.2, design refresh):

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
+import '../widgets/header_band.dart';
 
 /// FR-16: sessions grouped by participant, with per-session CSV export and
 /// an on-screen stats preview (count, mean latency, % corrected).
@@ -17,20 +18,27 @@ class ExportScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Session logs')),
-      body: state.summaries.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'No sessions yet. Recognized gestures appear here once '
-                  'logging starts.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
+      body: Column(
+        children: [
+          HeaderBand(
+            title: 'Session logs',
+            chipLabel: '${state.summaries.length} sessions',
+          ),
+          Expanded(
+            child: state.summaries.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text(
+                        'No sessions yet. Recognized gestures appear here '
+                        'once logging starts.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
                 for (final summary in state.summaries)
                   Card(
                     child: ListTile(
@@ -57,8 +65,11 @@ class ExportScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-              ],
-            ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

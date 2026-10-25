@@ -7,6 +7,7 @@ import '../../data/glove/glove_connection_factory.dart';
 import '../../data/glove/mock_glove_connection.dart';
 import '../widgets/demo_controls.dart';
 import '../widgets/device_status_bar.dart';
+import '../widgets/header_band.dart';
 import '../widgets/reply_panel.dart';
 import '../widgets/saved_phrases_panel.dart';
 import '../widgets/transcript_view.dart';
@@ -102,6 +103,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const Padding(
               padding: EdgeInsets.fromLTRB(12, 6, 12, 0),
               child: DemoControls(),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
+              child: HeaderBand(title: 'Transcript'),
             ),
             Expanded(
               child: TranscriptView(),

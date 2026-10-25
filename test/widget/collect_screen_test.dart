@@ -41,7 +41,8 @@ void main() {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
-    expect(find.text(AppStrings.recordModeTitle), findsOneWidget);
+    // App bar + header band both show the title (design refresh).
+    expect(find.text(AppStrings.recordModeTitle), findsNWidgets(2));
     expect(find.text(AppStrings.recordStart), findsOneWidget);
     expect(find.text(AppStrings.datasetSessions), findsOneWidget);
   });

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
 import '../../data/glove/mock_glove_connection.dart';
+import '../widgets/header_band.dart';
 
 /// FR-15 (language, voice, rate, large text), FR-13 (anonymized participant
 /// profile with consent), and dev demo options.
@@ -41,9 +42,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Column(
         children: [
+          const HeaderBand(title: 'Settings'),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
           _section(context, 'Output language'),
           SegmentedButton<String>(
             segments: const [
@@ -160,6 +165,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
             ],
+          ),
+              ],
+            ),
           ),
         ],
       ),

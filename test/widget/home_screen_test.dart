@@ -154,13 +154,14 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.tune_outlined));
     await tester.pumpAndSettle();
-    expect(find.text(AppStrings.calibrationTitle), findsOneWidget);
+    // App bar + header band both show the title (design refresh).
+    expect(find.text(AppStrings.calibrationTitle), findsNWidgets(2));
 
     await tester.pageBack();
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.fiber_manual_record_outlined));
     await tester.pumpAndSettle();
-    expect(find.text(AppStrings.recordModeTitle), findsOneWidget);
+    expect(find.text(AppStrings.recordModeTitle), findsNWidgets(2));
   });
 }

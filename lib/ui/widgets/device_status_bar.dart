@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/glove/glove_connection.dart';
 import '../../data/glove/mock_glove_connection.dart';
 import '../../domain/models/device_status.dart';
@@ -72,9 +73,9 @@ class DeviceStatusBar extends ConsumerWidget {
     final anyBusy = _busy(state.phase) || _busy(rightState.phase);
 
     final dotColor = (leftReady || rightReady)
-        ? Colors.green
+        ? AppColors.success
         : anyBusy
-            ? Colors.amber
+            ? AppColors.warning
             : scheme.outline;
 
     final battery = status?.batteryPercent;

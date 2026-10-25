@@ -6,6 +6,7 @@ import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
 import '../../domain/models/calibration_table.dart';
 import '../../domain/models/telemetry_packet.dart';
+import '../widgets/header_band.dart';
 
 /// Firmware-driven 10-step calibration wizard (master §4). The step shown
 /// is always the glove's STATUS.calibrationStep — the app never advances
@@ -19,11 +20,21 @@ class CalibrationScreen extends ConsumerWidget {
     final state = ref.watch(calibrationControllerProvider);
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.calibrationTitle)),
-      body: switch (state.phase) {
-        CalibrationPhase.idle => _Idle(state: state),
-        CalibrationPhase.running => _Running(state: state),
-        CalibrationPhase.done => _Done(state: state),
-      },
+      body: Column(
+        children: [
+          HeaderBand(
+            title: AppStrings.calibrationTitle,
+            chipLabel: state.step > 0 ? 'step ${state.step}/10' : null,
+          ),
+          Expanded(
+            child: switch (state.phase) {
+              CalibrationPhase.idle => _Idle(state: state),
+              CalibrationPhase.running => _Running(state: state),
+              CalibrationPhase.done => _Done(state: state),
+            },
+          ),
+        ],
+      ),
     );
   }
 }

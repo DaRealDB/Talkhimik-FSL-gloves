@@ -80,6 +80,13 @@ void main() {
       (tester) async {
     await pumpSettings(tester);
 
+    // The header band pushed the field below the fold (design refresh).
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('participant-id-field')),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.enterText(
         find.byKey(const Key('participant-id-field')), 'P-042');
     await tester.pumpAndSettle();

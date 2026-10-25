@@ -212,4 +212,16 @@ ThemeData _base(ColorScheme scheme, TalkhimikTokens tokens) => ThemeData(
         color: scheme.primary,
         linearTrackColor: scheme.surfaceContainerHighest,
       ),
+      tabBarTheme: TabBarThemeData(
+        // Pill tab buttons (reference style): L / R and navigation tabs.
+        dividerColor: Colors.transparent,
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          color: scheme.primary,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        labelColor: scheme.onPrimary,
+        unselectedLabelColor: scheme.onSurfaceVariant,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+      ),
     );

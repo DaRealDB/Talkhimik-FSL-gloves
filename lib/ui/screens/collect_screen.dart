@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../application/dataset_recorder_controller.dart';
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
+import '../widgets/header_band.dart';
 
 /// Dataset recorder screen (master §5): labeled takes at 5 Hz per glove,
 /// calibration-aware sessions, and the finished-sessions list with
@@ -33,9 +34,18 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.recordModeTitle)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Column(
         children: [
+          HeaderBand(
+            title: AppStrings.recordModeTitle,
+            chipLabel: recording && state.active.isNotEmpty
+                ? '${state.active.length} glove(s)'
+                : null,
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
           if (state.error != null) ...[
             Container(
               padding: const EdgeInsets.all(12),
@@ -164,6 +174,9 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
                 ),
               ),
             ),
+              ],
+            ),
+          ),
         ],
       ),
     );
