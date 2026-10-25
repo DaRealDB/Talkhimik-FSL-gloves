@@ -8,11 +8,11 @@ import '../../domain/models/telemetry_packet.dart';
 import 'glove_connection.dart';
 
 /// Demo/test scenarios the mock can run (dev-only; FR debug aid).
+/// Trimmed to the minimum that demonstrates the product (simplify pass):
+/// the transcript/TTS path and the reconnect core.
 enum MockScenario {
   alphabetSweep('Alphabet sweep'),
   mixedConfidence('Mixed confidence'),
-  lowBattery('Low battery'),
-  sensorFault('Sensor fault'),
   randomDisconnect('Random disconnect');
 
   const MockScenario(this.label);
@@ -88,7 +88,7 @@ class MockGloveConnection implements GloveConnection {
 
   GloveConnectionPhase _phase = GloveConnectionPhase.disconnected;
   GloveMode _mode = GloveMode.streaming;
-  int _battery;
+  final int _battery;
   int? _lastError;
 
   Timer? _scenarioTimer;
@@ -324,21 +324,6 @@ class MockGloveConnection implements GloveConnection {
                 : const [],
           );
         });
-      case MockScenario.lowBattery:
-        // Drain 100 → 12 % over ~60 s, one Device Status notify per second.
-        // The UI flags < 15 % from the percentage itself (the firmware has
-        // no low-battery error code).
-        _battery = _config.batteryStartPercent;
-        _scenarioTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-          _battery = math.max(12, _battery - 2);
-          _emitStatus();
-          if (_battery <= 12) stopScenario();
-        });
-      case MockScenario.sensorFault:
-        // Firmware error 4: resistance outside 1k..100k (finger fault).
-        _lastError = GloveErrorCode.resistanceFault.code;
-        _emitStatus();
-        stopScenario();
       case MockScenario.randomDisconnect:
         _disconnectTimer = Timer(_config.disconnectAfter, () {
           disconnect();
