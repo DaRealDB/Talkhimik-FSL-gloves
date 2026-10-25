@@ -285,7 +285,7 @@ first (Stage A), then app static checks (Stage B), end-to-end on Android
   directory lookup (`kIsWeb`) and Hive falls back to IndexedDB; CSV export
   fails fast with `UnsupportedError` (desktop/Android only). TTS degrades to
   `debugPrint` warnings, never crashes.
-- **iOS**: target folders exist; not a supported target in the thesis scope.
+- **iOS**: no target folder — out of thesis scope (master §1.3).
 
 ---
 
