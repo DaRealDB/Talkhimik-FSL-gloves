@@ -56,6 +56,7 @@ is the **production link** (glove → phone).
 | TTS | `flutter_tts` 4.2.5 (OS-native engine) |
 | Persistence | `hive_ce` 2.19.3 (boxes) + `shared_preferences` 2.5.5 (settings) |
 | Permissions | `permission_handler` 12.x (pinned — 13.x exceeds AGP 9.1's max compileSdk) |
+| Sharing | `share_plus` 13.3.1 (dataset share sheet, master §5.4) |
 
 | Platform | Role |
 |---|---|
@@ -86,13 +87,15 @@ lib/
 │   ├── theme/
 │   └── utils/csv_exporter.dart    # RFC-4180 CSV (FR-16)
 ├── domain/
-│   ├── models/                    # GestureLogEntry, ParticipantProfile, TranscriptEntry, …
+│   ├── models/                    # HandState, CalInfoPacket, DatasetSession, GestureLogEntry, …
 │   ├── repositories/              # interfaces: LogStore, VocabularyRepository, CloudSync
-│   └── vocab/                     # FSL vocabulary table (word_id → Filipino/English)
+│   ├── vocab/                     # FSL vocabulary table (word_id → Filipino/English)
+│   └── sensing/sensor_math.dart   # divider → ohms → angle + wrap-safe seq gap (master §3)
 ├── data/
 │   ├── codec/                     # strict LE decoders: telemetry, device status, CAL_INFO (+ planned label packet)
+│   ├── dataset/                   # DatasetFileWriter — CSV + sidecar per session (master §5)
 │   ├── glove/                     # GloveConnection interface + FlutterBlue impl + mock + factory + permissions
-│   ├── storage/                   # HiveLogStore, calibration store, settings service
+│   ├── storage/                   # HiveLogStore, CalInfo cache (mirror), settings service
 │   ├── tts/                       # FlutterTtsService (degrades, never throws)
 │   └── vocab/
 ├── application/
@@ -101,11 +104,12 @@ lib/
 │   ├── transcript_controller.dart # recognized gestures → bubbles, corrections, TTS, logging
 │   ├── tts_controller.dart        # FR-2/FR-15 voice, rate, language, mute
 │   ├── settings_controller.dart   # FR-13/FR-15 participant, consent, accessibility
-│   ├── calibration_controller.dart# FR-8 per-user calibration profiles
-│   ├── data_collection_controller.dart # FR-9 labeled training-data capture
+│   ├── live_controller.dart       # per-hand HandState: loss, rate, mismatch (master §6)
+│   ├── calibration_controller.dart# firmware-driven 10-step wizard (master §4)
+│   ├── dataset_recorder_controller.dart # 5 Hz calibration-aware recorder (master §5)
 │   └── export_controller.dart     # FR-16 session summaries + CSV export
 └── ui/
-    ├── screens/                   # home, settings, export, calibration, collect
+    ├── screens/                   # home, live, settings, export, calibration, collect
     └── widgets/                   # transcript bubbles, confidence badge, status bar, demo controls, …
 ```
 
@@ -139,8 +143,8 @@ WidgetsFlutterBinding.ensureInitialized()
 | FR-5 | Vocabulary lookup (word_id → text) | `vocab/`, `default_vocabulary_repository.dart` |
 | FR-6 | User correction of a misrecognized sign | `transcript_controller.dart` (corrected, originalWordId) |
 | FR-7 | Type a reply for the signer | `reply_panel.dart` |
-| FR-8 | Per-user calibration profiles | `calibration_controller.dart`, `calibration_store.dart` |
-| FR-9 | Record mode — labeled training data | `data_collection_controller.dart`, `collect_screen.dart` |
+| FR-8 | Firmware-driven 10-step calibration wizard (glove-authoritative CAL_INFO) | `calibration_controller.dart`, `calinfo_cache.dart` |
+| FR-9 | Dataset recorder — labeled 5 Hz streams, CSV + sidecar | `dataset_recorder_controller.dart`, `dataset_file_writer.dart` |
 | FR-10 | Local event log + offline sync queue | `hive_log_store.dart` (C-S4 sync queue) |
 | FR-12 | Connection status bar | `glove_controller.dart`, `device_status_bar.dart` |
 | FR-13 | Participant ID + consent | `settings_controller.dart`, `participant.dart` (DR-4 anonymity) |
@@ -161,57 +165,10 @@ WidgetsFlutterBinding.ensureInitialized()
 
 ## 5. GATT Contract (app side)
 
-Constants in `lib/core/constants/gatt_ids.dart`, aligned 1:1 with the
-as-built firmware (`TALKHIMIK_Thesis_Reference.md` §4.4, Code Reference
-§5) — the app and the web dashboard now speak the same glove.
-
-| Item | Value |
-|---|---|
-| Advertised device name | `TALKHIMIK-L` / `TALKHIMIK-R` (matched by prefix) |
-| Glove Service | `d84f9c2e-6b1a-4e57-9f3d-2a8c7e5b1f04` |
-| Telemetry | `7a3e1b9c-2d4f-48a6-b7e2-5c9d0f8a3b61` — READ + NOTIFY |
-| Command | `3f8d2a6b-9c4e-4d7f-a1e3-6b5c8d0e2f49` — WRITE + WRITE-NO-RESPONSE |
-| Device Status | `c2b6e8d4-1a7f-4c3e-9d5b-0f2a6e8c4d73` — READ + NOTIFY |
-| CAL_INFO | `a1f2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d` — READ + NOTIFY |
-
-### Telemetry — NOTIFY, 29 bytes, little-endian, every 50 ms
-
-u8 hand · u16 seq · u8 flex[5] angles 0–90° · i16 roll/pitch/yaw ×10 ·
-u16 raw ADC[5] · u32 calibration_id · u8 quality (bit0..4 valid mask,
-bit5 weak span). Decoded by `TelemetryPacketCodec` into `TelemetryPacket`
-(exposed through `GloveState.telemetry`). Raw sensor stream only — it
-carries no recognized word.
-
-### Device Status — READ + NOTIFY, 5 bytes, every 250 ms
-
-u8 mode (0 streaming, 1 calibrating) · u8 calibration step (0 idle,
-1–10 thumb-flat … pinky-90) · u8 battery % (`0xFF` = unknown) · u8 flags
-(bit0 = uncalibrated, placeholder angles) · u8 error (1 capture-not-
-calibrating · 2 unknown command · 3 90° within 5% of flat · 4 resistance
-outside 1k..100k). Decoded by `DeviceStatusCodec`; the status bar shows
-battery, an "Uncalibrated" chip (flags bit0), and firmware error labels.
-
-### CAL_INFO — READ + NOTIFY, 104 bytes
-
-The full calibration table (valid/weak masks, calibration_id, per-finger
-flat/bent90 ohms + ADC, R_DIV, span counts, firmware version), read once
-on connect and refreshed on every notify. Decoded by `CalInfoCodec` into
-`CalInfoPacket` (`GloveState.calInfo`).
-
-### App Command — WRITE, 1 opcode byte + optional LE payload (C-F5)
-
-| Opcode | Command | Payload |
-|---|---|---|
-| 0x01 | startCalibration | — |
-| 0x02 | captureFlat | — |
-| 0x03 | capture90 | — |
-| 0x04 | cancelCalibration | — |
-| 0x05 | setRate | u16 LE ms (firmware clamps 20–1000) |
-| 0x06 | zeroYaw | — |
-| 0x07 | setHand | u8 (0 = L, 1 = R) |
-| 0x08 | vibrate | u16 LE ms |
-
-`AppCommand.encode(value:)` serializes opcode + payload (unit-tested).
+**Single source of truth: `TALKHIMIK_Master_Integration.md` §2** — service/characteristic
+UUIDs, all four packet layouts (29/5/104 bytes), and the COMMAND opcode table live
+there and in `lib/core/constants/gatt_ids.dart` + the codecs. This section
+deliberately holds no copy of those tables.
 
 ### Production label packet (planned)
 
@@ -221,7 +178,7 @@ stage; `GesturePacketCodec` and its test are in place, and the mock glove
 already drives the transcript through it. Until the firmware emits label
 packets, a connected real glove feeds telemetry/status/CAL_INFO but no
 transcript — the classifier or label-packet firmware is the next
-milestone (checklist open item 4).
+milestone (checklist open item).
 
 ---
 
@@ -274,10 +231,19 @@ default, NFR-7) · `settings.participantId` · `settings.consentGiven` ·
 `settings.consentDate` · `settings.forceMock` (dev) · `settings.demoScenario`
 (dev).
 
-### Calibration profiles (FR-8)
+### Calibration mirror (master §4.5)
 
-`SharedPrefsCalibrationProfileStore` — per-user profile JSON in
-shared_preferences (overridden with an in-memory store in tests).
+`SharedPrefsCalInfoCache` — last-known CAL_INFO per hand (`calinfo.L` /
+`calinfo.R` JSON). Mirror only: the glove's NVS is the calibration
+authority; the cache shows the last profile while disconnected and feeds
+dataset sidecars. The LiveController owns the mirror write.
+
+### Dataset files (master §5.4)
+
+App-support dir `talkhimik_dataset/` — `talkhimik_<L|R>_<session>_cal<id>.csv`
++ `..._sidecar.json` per session, rows appended as recorded; the sessions
+list is rebuilt from sidecars (newest first) and files are shared via
+`share_plus`.
 
 ---
 
@@ -285,11 +251,12 @@ shared_preferences (overridden with an in-memory store in tests).
 
 | Route | Screen | Purpose |
 |---|---|---|
-| `/` | Home | transcript, confidence badges, reply panel, device status bar, demo controls (mock only) |
+| `/` | Home | transcript, confidence badges, reply panel, device status bar, demo controls (mock only), Live entry |
+| `/live` | Live | both gloves: animated hands, angle bars, raw ADC + Ω, IMU tiles, health badges, zero-yaw/vibrate (master §6) |
 | `/settings` | Settings | participant ID, consent, output language, TTS voice/rate/mute, large text, Force mock |
-| `/calibration` | Calibration | guided per-user profile capture (FR-8) |
-| `/collect` | Collect | Record mode — labeled training data (FR-9) |
-| `/export` | Export | session summaries + one-tap CSV (FR-16) |
+| `/calibration` | Calibration | firmware-driven 10-step wizard + CAL_INFO summary (master §4) |
+| `/collect` | Collect | dataset recorder: labeled takes, sessions list, share/delete (master §5) |
+| `/export` | Export | FR-16 event session summaries + one-tap CSV |
 
 ---
 
@@ -327,18 +294,17 @@ first (Stage A), then app static checks (Stage B), end-to-end on Android
 
 The glove ↔ app link is verified in stages
 ([`ble-integration-checklist.md`](ble-integration-checklist.md)). The
-transport contract is now aligned with the as-built firmware (UUIDs, device
-name, packet layouts, command opcodes — §5), so Stage A/B checks use the
-firmware values directly. Open items to close with the firmware team:
+transport contract is aligned with the as-built firmware (master §2), and
+the master integration (§4 wizard, §5 recorder) is implemented and covered
+by unit/widget/mock end-to-end tests. Open items:
 
-- Calibration packet contract (FR-8): the app shell sends
-  START/CANCEL_CALIBRATION but does not yet drive the firmware wizard steps
-  (STATUS.calibrationStep → CAPTURE_FLAT/CAPTURE_90) — see
-  `calibration_controller.dart`.
-- Raw sensor stream contract for FR-9 (labeled streams vs. labeled result
-  packets — see `data_collection_controller.dart`).
-- The production label packet (word_id + confidence): firmware stage after
-  on-glove TFLM; the mock models it today.
+- Production label packet: the 7-byte gesture result contract
+  (`gesture_packet_codec.dart`, SRS Table III-2) vs. the raw telemetry
+  stream — until the firmware sends labels (or the optional phone-side
+  classifier lands, master Phase 7), the transcript works only with the
+  mock glove.
+- Hardware verification (checklist Stages A/C) on the realme test phone
+  with a real glove — the mock covers everything off-device.
 
 ---
 

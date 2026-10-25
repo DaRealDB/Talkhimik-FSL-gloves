@@ -59,9 +59,9 @@ rationale). SRS codes: C-F4/C-F5/C-F7, C-S1, C-S5, NFR-9, Table III-1/III-2.
       packet (open item below) — C.4's gesture→bubble check is blocked on it.
 - [ ] C.5 Low-confidence gesture shows an amber/red badge (FR-4) — mock
       path until the label packet exists.
-- [ ] C.6 Calibration and Record mode send `startCalibration` /
-      `cancelCalibration` / `setRate(50)` command bytes; the glove's mode
-      flips accordingly.
+- [ ] C.6 The calibration wizard drives the firmware steps
+      (START/CAPTURE_FLAT/CAPTURE_90/CANCEL via STATUS.step) and Record mode
+      samples the telemetry stream into CSV + sidecar files.
 - [ ] C.7 Power off the glove mid-session: the **"connection lost" banner**
       appears within 3 s (C-S5, NFR-9) and auto-reconnect retries with
       backoff 1→2→4→8→30 s.
