@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
-
 import '../core/constants/app_version.dart';
+import '../data/dataset/dataset_file_writer.dart';
 import '../data/glove/glove_connection.dart';
 import '../data/glove/glove_connection_factory.dart';
 import '../data/glove/mock_glove_connection.dart';
@@ -17,7 +17,7 @@ import '../domain/models/telemetry_packet.dart';
 import '../domain/repositories/log_store.dart';
 import '../domain/repositories/vocabulary_repository.dart';
 import 'calibration_controller.dart';
-import 'data_collection_controller.dart';
+import 'dataset_recorder_controller.dart';
 import 'export_controller.dart';
 import 'glove_controller.dart';
 import 'live_controller.dart';
@@ -103,6 +103,26 @@ final exportDirectoryProvider = Provider<Future<Directory>>((ref) async {
   return dir;
 });
 
+/// Dataset files (master §5.4): app-support dir, `talkhimik_dataset/`.
+final datasetDirectoryProvider = Provider<Future<Directory>>((ref) async {
+  if (kIsWeb) {
+    throw UnsupportedError('Dataset recording is desktop/Android only');
+  }
+  final base = await getApplicationSupportDirectory();
+  final dir = Directory('${base.path}/talkhimik_dataset');
+  await dir.create(recursive: true);
+  return dir;
+});
+
+/// The dataset CSV/sidecar writer; overridden with a temp dir in tests.
+final datasetWriterProvider = Provider<DatasetFileWriter>(
+  (ref) => DatasetFileWriter(() => ref.read(datasetDirectoryProvider)),
+);
+
+final datasetRecorderControllerProvider =
+    NotifierProvider<DatasetRecorderController, RecorderState>(
+        DatasetRecorderController.new);
+
 final exportControllerProvider =
     NotifierProvider<ExportController, ExportState>(ExportController.new);
 
@@ -116,7 +136,3 @@ final calInfoCacheProvider = Provider<CalInfoCache>(
 final calibrationControllerProvider =
     NotifierProvider<CalibrationController, CalibrationState>(
         CalibrationController.new);
-
-final dataCollectionControllerProvider =
-    NotifierProvider<DataCollectionController, CollectionState>(
-        DataCollectionController.new);

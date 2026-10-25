@@ -99,6 +99,19 @@ class AppStrings {
       'Set the participant ID in Settings first (FR-13).';
   static const recordNeedsConsent =
       'Consent must be given before data collection (NFR-8).';
+  static const recordNeedsCalibration =
+      'Calibrate the glove before recording (cal_id 0).';
+  static const recordNeedsLabel = 'Enter a label for the take.';
+  static const datasetLabel = 'Label';
+  static const datasetLabelHint = 'e.g. A, KUMUSTA';
+  static const datasetStartTake = 'Start take';
+  static const datasetStopTake = 'Stop take';
+  static const datasetRecording = 'Recording';
+  static const datasetSessions = 'Dataset sessions';
+  static const datasetShare = 'Share';
+  static const datasetDelete = 'Delete';
+  static const datasetRows = 'rows';
+  static const datasetDropped = 'dropped';
   static const recordStart = 'Start recording';
   static const recordSkip = 'Skip sign';
   static const recordAbort = 'Abort';

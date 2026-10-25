@@ -18,6 +18,7 @@ dependencies:
   # Pinned 12.x: 13.x pulls permission_handler_android 14.x whose
   # compileSdk 37 exceeds AGP 9.1's supported max (36) on Flutter 3.47.
   permission_handler: 12.0.3
+  share_plus: ^13.3.1
   shared_preferences: 2.5.5
 
 dev_dependencies:
