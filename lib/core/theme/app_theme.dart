@@ -2,45 +2,75 @@ import 'package:flutter/material.dart';
 
 import 'motion.dart';
 
-/// Talkhimik design tokens (approved 2026-10, "simplify + refresh" pass) —
-/// Pokémon GO Hub-style: brand green surfaces, olive-lime header bands with
-/// a deep-green diagonal corner, warm-gray page, light rounded cards, pill
-/// shapes. LIGHT is the primary theme; the dark variant derives from the
-/// same hues. WCAG AA throughout (on-lime text is near-black — white fails).
+/// Talkhimik design tokens v3 (approved 2026-10) — the three signature
+/// blues (sky / azure / navy) on a clean white field, 45° diagonal slab
+/// geometry, soft navy-tinted shadows. Supersedes the green/olive palette;
+/// the token ARCHITECTURE (ColorScheme + ThemeExtensions) is unchanged.
+///
+/// AA rules baked in: sky #54C5F8 and azure #29B6F6 are FILLS only
+/// (≈1.9:1 / ≈2.3:1 on white); anything on them uses navy text. Every
+/// card/input carries the 1 dp #3E7196 hairline (4.4:1 vs white) so the
+/// background → card → chip depth step is always legible.
 class AppColors {
   AppColors._();
 
   // Brand (light)
-  static const brandGreen = Color(0xFF067A4C); // app bar, primary buttons
-  static const forest = Color(0xFF17713F); // diagonal corner, outlines
-  static const lime = Color(0xFF7CA526); // header band
-  static const limeText = Color(0xFF1C280A); // on-lime (AA)
-  static const primaryContainer = Color(0xFFCFE8D8);
-  static const onPrimaryContainer = Color(0xFF0A3323);
-  static const warmPage = Color(0xFFD6D4CD);
-  static const card = Color(0xFFEAE8E2);
-  static const surfaceVariant = Color(0xFFBFBDB6);
-  static const outlineGray = Color(0xFF8F8D87);
-  static const text = Color(0xFF1D1C19);
-  static const textMuted = Color(0xFF4A4944);
+  static const navy = Color(0xFF01579B); // primary, active states
+  static const navyText = Color(0xFF0B2540); // primary text (14.5:1)
+  static const azure = Color(0xFF29B6F6); // secondary — fills only
+  static const sky = Color(0xFF54C5F8); // tertiary — decoration only
+  static const fold = Color(0xFF013A6B); // fold-shadow core
+  static const tintSky = Color(0xFFF3F9FD); // card surface
+  static const tintSkyDeep = Color(0xFFE6F3FB); // chips / inputs
+  static const textSecondary = Color(0xFF36536E); // 8.0:1 on white
+  static const textTertiary = Color(0xFF5F7A91); // 4.6:1 on white
+  static const outlineBlue = Color(0xFF3E7196); // hairlines (4.4:1)
+  static const outlineSoft = Color(0xFF9FC2D9); // decorative dividers
+  static const shadowBlue = Color(0x1F01579B); // rgba(1,87,155,0.12)
 
-  // State
+  // Dark
+  static const darkBg = Color(0xFF06182B);
+  static const darkSurface = Color(0xFF0C2540);
+  static const darkSurfaceVariant = Color(0xFF123456);
+  static const darkOutline = Color(0xFF5B87AB);
+
+  // Semantic
   static const success = Color(0xFF1B7A3D);
   static const warning = Color(0xFFB26A00);
   static const danger = Color(0xFFB3261E);
+  static const infoTeal = Color(0xFF00796B); // info ≠ brand blue
 
-  // Finger fill gradient (neutral → lime as flexion grows).
-  static const fingerLow = Color(0xFFD8D0C4);
-  static const fingerHigh = Color(0xFF7CA526);
-
-  /// Confidence badge colors (FR-4): outline-style so they never read as
-  /// brand surfaces; AA on both themes.
+  /// Confidence badge colors (FR-4): green/amber/red + ✓/◐/! glyphs.
   static const confidenceGreen = Color(0xFF1B7A3D);
   static const confidenceAmber = Color(0xFFB26A00);
   static const confidenceRed = Color(0xFFB3261E);
+
+  // Finger gradient (2-stop approximation; the 4-stop version lands with
+  // the hand re-skin).
+  static const fingerLow = Color(0xFFD6EEFB);
+  static const fingerHigh = Color(0xFF54C5F8);
+
+  static const brandGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [sky, azure],
+  );
+
+  static const deepGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [azure, navy],
+  );
+
+  /// Soft inner shadow where navy meets azure (the logo's fold).
+  static const foldGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [fold, Color(0x00013A6B)],
+  );
 }
 
-/// Custom tokens beyond [ColorScheme] (header band, finger gradient).
+/// Custom tokens beyond [ColorScheme] (slab colors, finger gradient).
 @immutable
 class TalkhimikTokens extends ThemeExtension<TalkhimikTokens> {
   const TalkhimikTokens({
@@ -51,13 +81,13 @@ class TalkhimikTokens extends ThemeExtension<TalkhimikTokens> {
     required this.fingerHigh,
   });
 
-  /// Olive-lime card header band.
+  /// Sky — diagonal slab / header fills.
   final Color header;
 
-  /// Deep forest green of the diagonal corner.
+  /// Navy — outline, accents, fold shadow.
   final Color headerDark;
 
-  /// AA-safe text on the header band.
+  /// AA-safe text on the slab (navy on sky).
   final Color headerText;
 
   /// Finger gradient endpoints.
@@ -65,19 +95,19 @@ class TalkhimikTokens extends ThemeExtension<TalkhimikTokens> {
   final Color fingerHigh;
 
   static const light = TalkhimikTokens(
-    header: AppColors.lime,
-    headerDark: AppColors.forest,
-    headerText: AppColors.limeText,
+    header: AppColors.sky,
+    headerDark: AppColors.navy,
+    headerText: AppColors.navyText,
     fingerLow: AppColors.fingerLow,
     fingerHigh: AppColors.fingerHigh,
   );
 
   static const dark = TalkhimikTokens(
-    header: Color(0xFF9CBF4D),
-    headerDark: Color(0xFF4CAF7D),
-    headerText: Color(0xFF1B2908),
-    fingerLow: Color(0xFF4A463E),
-    fingerHigh: Color(0xFF9CBF4D),
+    header: AppColors.sky,
+    headerDark: AppColors.azure,
+    headerText: AppColors.darkBg,
+    fingerLow: AppColors.fingerLow,
+    fingerHigh: AppColors.sky,
   );
 
   @override
@@ -108,9 +138,6 @@ class TalkhimikTokens extends ThemeExtension<TalkhimikTokens> {
     );
   }
 }
-
-const _radiusCard = 16.0;
-const _radiusControl = 12.0;
 
 /// App-specific text styles (typography pass): the product's main text
 /// (transcriptWord) is the largest, most legible style; live numbers use
@@ -232,32 +259,123 @@ TalkhimikText _buildTalkhimikText() => const TalkhimikText(
 
 ThemeData buildLightTheme() {
   final scheme = ColorScheme.fromSeed(
-    seedColor: AppColors.brandGreen,
-    primary: AppColors.brandGreen,
-    secondary: AppColors.forest,
-    tertiary: AppColors.lime,
-    surface: AppColors.card,
-    onSurface: AppColors.text,
-    onSurfaceVariant: AppColors.textMuted,
-    outline: AppColors.outlineGray,
+    seedColor: AppColors.navy,
+    primary: AppColors.navy,
+    onPrimary: Colors.white,
+    secondary: AppColors.azure,
+    onSecondary: AppColors.navyText,
+    tertiary: AppColors.sky,
+    onTertiary: AppColors.navyText,
+    surface: AppColors.tintSky,
+    onSurface: AppColors.navyText,
+    onSurfaceVariant: AppColors.textSecondary,
+    outline: AppColors.outlineBlue,
+    outlineVariant: AppColors.outlineSoft,
     error: AppColors.danger,
     brightness: Brightness.light,
   );
   return _base(scheme, TalkhimikTokens.light).copyWith(
-    scaffoldBackgroundColor: AppColors.warmPage,
+    scaffoldBackgroundColor: Colors.white,
+    appBarTheme: AppBarTheme(
+      backgroundColor: Colors.white,
+      foregroundColor: AppColors.navy,
+      centerTitle: false,
+      elevation: 0,
+      scrolledUnderElevation: 1,
+      toolbarHeight: 64,
+      titleTextStyle: const TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        color: AppColors.navy,
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.navy,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(88, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        textStyle: const TextStyle(
+            fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600),
+        shape: const StadiumBorder(),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.navy,
+        minimumSize: const Size(88, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        side: const BorderSide(color: AppColors.navy, width: 1.5),
+        shape: const StadiumBorder(),
+      ),
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: Colors.white,
+      selectedItemColor: AppColors.navy,
+      unselectedItemColor: AppColors.textTertiary,
+      type: BottomNavigationBarType.fixed,
+      showUnselectedLabels: true,
+    ),
   );
 }
 
 ThemeData buildDarkTheme() {
   final scheme = ColorScheme.fromSeed(
-    seedColor: const Color(0xFF3DD68C),
-    primary: const Color(0xFF3DD68C),
-    secondary: const Color(0xFF4CAF7D),
-    tertiary: const Color(0xFF9CBF4D),
+    seedColor: const Color(0xFF54C5F8),
+    primary: const Color(0xFF54C5F8),
+    onPrimary: const Color(0xFF06182B),
+    secondary: const Color(0xFF29B6F6),
+    onSecondary: const Color(0xFF06182B),
+    tertiary: const Color(0xFF29B6F6),
     brightness: Brightness.dark,
+    surface: const Color(0xFF0C2540),
+    onSurface: Colors.white,
+    outline: const Color(0xFF5B87AB),
+    error: const Color(0xFFF2B8B5),
   );
   return _base(scheme, TalkhimikTokens.dark).copyWith(
-    scaffoldBackgroundColor: const Color(0xFF1B1D19),
+    scaffoldBackgroundColor: const Color(0xFF06182B),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF06182B),
+      foregroundColor: Colors.white,
+      centerTitle: false,
+      elevation: 0,
+      toolbarHeight: 64,
+      titleTextStyle: TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        color: Colors.white,
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFF54C5F8),
+        foregroundColor: const Color(0xFF06182B),
+        minimumSize: const Size(88, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        textStyle: const TextStyle(
+            fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600),
+        shape: const StadiumBorder(),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFF54C5F8),
+        minimumSize: const Size(88, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        side: const BorderSide(color: Color(0xFF54C5F8), width: 1.5),
+        shape: const StadiumBorder(),
+      ),
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: Color(0xFF0C2540),
+      selectedItemColor: Color(0xFF54C5F8),
+      unselectedItemColor: Color(0xFF5F7A91),
+      type: BottomNavigationBarType.fixed,
+      showUnselectedLabels: true,
+    ),
   );
 }
 
@@ -267,8 +385,7 @@ ThemeData _base(ColorScheme scheme, TalkhimikTokens tokens) => ThemeData(
       textTheme: _buildTextTheme(scheme.onSurface),
       useMaterial3: true,
       extensions: [tokens, _buildTalkhimikText(), TalkhimikMotion.values],
-      // Shared fade-through page transition (≤ 280 ms) + brand-tinted
-      // ripples for the pill microinteractions.
+      // Shared fade-through page transition (≤ 280 ms) + azure ripples.
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
@@ -277,21 +394,18 @@ ThemeData _base(ColorScheme scheme, TalkhimikTokens tokens) => ThemeData(
           TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(),
         },
       ),
-      splashColor: AppColors.brandGreen.withValues(alpha: 0.15),
-      highlightColor: AppColors.brandGreen.withValues(alpha: 0.08),
-      appBarTheme: AppBarTheme(
-        backgroundColor: scheme.primary,
-        foregroundColor: scheme.onPrimary,
-        centerTitle: true,
-        elevation: 0,
-      ),
+      splashColor: AppColors.azure.withValues(alpha: 0.2),
+      highlightColor: AppColors.azure.withValues(alpha: 0.08),
+      // Cards: tinted glass base, soft navy-tinted shadow, and the 1 dp
+      // hairline that carries the background → card depth step (4.4:1).
       cardTheme: CardThemeData(
         color: scheme.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 1,
-        shadowColor: Colors.black.withValues(alpha: 0.08),
+        shadowColor: AppColors.shadowBlue,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_radiusCard),
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: scheme.outline, width: 1),
         ),
         margin: const EdgeInsets.symmetric(vertical: 4),
       ),
@@ -299,41 +413,6 @@ ThemeData _base(ColorScheme scheme, TalkhimikTokens tokens) => ThemeData(
         shape: const StadiumBorder(),
         backgroundColor: scheme.surfaceContainerHighest,
         side: BorderSide(color: scheme.outlineVariant),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radiusControl),
-          ),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: scheme.onSurface,
-          side: BorderSide(color: scheme.outline),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radiusControl),
-          ),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: scheme.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radiusControl),
-        ),
-      ),
-      listTileTheme: ListTileThemeData(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_radiusCard),
-        ),
-      ),
-      expansionTileTheme: ExpansionTileThemeData(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_radiusCard),
-        ),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
@@ -354,6 +433,42 @@ ThemeData _base(ColorScheme scheme, TalkhimikTokens tokens) => ThemeData(
                 ? scheme.onPrimary
                 : scheme.onSurfaceVariant,
           ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surfaceContainerHighest,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        // 1.5 dp azure focus border — never a heavy dark outline.
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: scheme.secondary, width: 1.5),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          iconSize: 24,
+          minimumSize: const Size(48, 48),
+          splashFactory: InkRipple.splashFactory,
+        ),
+      ),
+      listTileTheme: ListTileThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      expansionTileTheme: ExpansionTileThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(

@@ -75,7 +75,7 @@ void main() {
     expect(painter.pose.handedness, GloveHand.left);
     expect(painter.pose.invalidMask, 2);
     expect(painter.uncalibrated, isTrue);
-    expect(painter.tokens.header, AppColors.lime);
+    expect(painter.tokens.header, AppColors.sky);
   });
 }
 

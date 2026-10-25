@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import 'anim.dart';
 
-/// Olive-lime header band with the deep-green diagonal corner — the shared
-/// design-language element for panel headers across screens.
+/// Header band in the signature language: a sky→azure diagonal gradient
+/// fill with a 45° end cap, the fold-shadow gradient where the cap meets
+/// the body, navy title text (AA), and a glass chip.
 class HeaderBand extends StatelessWidget {
   const HeaderBand({
     super.key,
@@ -23,55 +24,69 @@ class HeaderBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = Theme.of(context).extension<TalkhimikTokens>() ??
-        TalkhimikTokens.light;
     final band = ClipPath(
-      clipper: const _CornerClipper(corner: 22),
+      // 45° diagonal end cap on the right (the logo's slab language).
+      clipper: const _DiagonalEndCap(corner: 26),
       child: Container(
-        color: tokens.header,
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-        child: Row(
+        decoration: const BoxDecoration(gradient: AppColors.brandGradient),
+        padding: const EdgeInsets.fromLTRB(14, 10, 40, 10),
+        child: Stack(
           children: [
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: tokens.headerText,
-                      fontWeight: FontWeight.w700,
-                    ),
+            // Fold shadow where the cap meets the band.
+            Positioned(
+              right: 26,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 10,
+                decoration: const BoxDecoration(
+                    gradient: AppColors.foldGradient),
               ),
             ),
-            if (chipLabel != null)
-              Flexible(
-                child: KeyedOneShot(
-                  // One-shot highlight when the chip content changes
-                  // (e.g. calibration_id bump on Live).
-                  trigger: chipLabel,
-                  builder: (t, context) => Transform.scale(
-                    scale: 0.94 + 0.06 * t.value,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Color.lerp(tokens.headerDark,
-                            tokens.header, t.value),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        chipLabel!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelSmall
-                            ?.copyWith(color: Colors.white),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: AppColors.navyText,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+                if (chipLabel != null)
+                  Flexible(
+                    child: KeyedOneShot(
+                      // One-shot highlight when the chip content changes
+                      // (e.g. calibration_id bump on Live).
+                      trigger: chipLabel,
+                      builder: (t, context) => Transform.scale(
+                        scale: 0.94 + 0.06 * t.value,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Color.lerp(Colors.white,
+                                AppColors.tintSky, t.value),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            chipLabel!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(color: AppColors.navyText),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
+              ],
+            ),
           ],
         ),
       ),
@@ -81,9 +96,9 @@ class HeaderBand extends StatelessWidget {
   }
 }
 
-/// Cuts the top-right diagonal corner.
-class _CornerClipper extends CustomClipper<Path> {
-  const _CornerClipper({required this.corner});
+/// Cuts a 45° diagonal end cap on the right.
+class _DiagonalEndCap extends CustomClipper<Path> {
+  const _DiagonalEndCap({required this.corner});
 
   final double corner;
 
@@ -97,6 +112,7 @@ class _CornerClipper extends CustomClipper<Path> {
     ..close();
 
   @override
-  bool shouldReclip(_CornerClipper oldClipper) =>
+  bool shouldReclip(_DiagonalEndCap oldClipper) =>
       oldClipper.corner != corner;
 }
+
