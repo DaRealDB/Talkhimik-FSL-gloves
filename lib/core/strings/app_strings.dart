@@ -40,12 +40,10 @@ class AppStrings {
   static const stale = 'Stale';
   static const packetLoss = 'Packet loss';
   static const updateRate = 'Update rate';
-  static const battery = 'Battery';
   static const details = 'Details';
   static const rawAdc = 'Raw ADC';
   static const resistanceOhm = 'Resistance (Ω)';
   static const zeroYaw = 'Zero yaw';
-  static const vibrateTest = 'Vibrate';
   static const weakSignal = 'Weak signal';
   static const handMismatchWarning = 'Hand mismatch — check glove name';
   static const noFramesYet = 'No frames yet';

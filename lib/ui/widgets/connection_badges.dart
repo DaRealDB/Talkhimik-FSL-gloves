@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/strings/app_strings.dart';
 import '../../domain/models/hand_state.dart';
 
-/// Connection-health badges per hand (master §6.1): freshness (stale after
-/// 500 ms), packet-loss % (rolling), update rate, and battery ("—" for
-/// 0xFF, which the firmware always sends).
+/// One merged connection-health line per hand (master §6.1, simplified):
+/// freshness + packet loss + update rate in a single chip, plus a stale
+/// chip and the hand-mismatch warning when they apply. Battery is hidden
+/// until the firmware actually reports it (it always sends 0xFF today).
 class ConnectionBadges extends StatelessWidget {
   const ConnectionBadges({super.key, required this.hand, required this.now});
 
@@ -19,7 +20,6 @@ class ConnectionBadges extends StatelessWidget {
     final freshness = hand.lastFrameAt == null
         ? '—'
         : '${now.difference(hand.lastFrameAt!).inMilliseconds} ms';
-    final battery = hand.status?.batteryPercent;
 
     return Wrap(
       spacing: 6,
@@ -27,33 +27,17 @@ class ConnectionBadges extends StatelessWidget {
       children: [
         _badge(
           context,
-          '${AppStrings.freshness}: $freshness',
+          '${AppStrings.freshness}: $freshness'
+          ' · ${AppStrings.packetLoss}: '
+          '${hand.packetLossPercent.toStringAsFixed(1)}%'
+          ' · ${AppStrings.updateRate}: '
+          '${hand.updateRateHz.toStringAsFixed(1)}/s',
           stale ? scheme.errorContainer : scheme.surfaceContainerHighest,
           stale ? scheme.onErrorContainer : scheme.onSurfaceVariant,
         ),
         if (stale)
           _badge(context, AppStrings.stale, scheme.errorContainer,
               scheme.onErrorContainer),
-        _badge(
-          context,
-          '${AppStrings.packetLoss}: '
-          '${hand.packetLossPercent.toStringAsFixed(1)}%',
-          scheme.surfaceContainerHighest,
-          scheme.onSurfaceVariant,
-        ),
-        _badge(
-          context,
-          '${AppStrings.updateRate}: '
-          '${hand.updateRateHz.toStringAsFixed(1)}/s',
-          scheme.surfaceContainerHighest,
-          scheme.onSurfaceVariant,
-        ),
-        _badge(
-          context,
-          '${AppStrings.battery}: ${battery?.toString() ?? '—'}%',
-          scheme.surfaceContainerHighest,
-          scheme.onSurfaceVariant,
-        ),
         if (hand.handMismatch)
           _badge(context, AppStrings.handMismatchWarning, scheme.errorContainer,
               scheme.onErrorContainer),
