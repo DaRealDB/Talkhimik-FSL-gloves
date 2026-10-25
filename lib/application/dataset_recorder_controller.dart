@@ -83,12 +83,14 @@ class DatasetRecorderController extends Notifier<RecorderState> {
 
   @override
   RecorderState build() {
+    // watch, not read: a Force-mock toggle swaps the connections and the
+    // recorder must rebind to the new instances.
     _subs.add(ref
-        .read(gloveConnectionProvider)
+        .watch(gloveConnectionProvider)
         .telemetry
         .listen((t) => _latest[GloveHand.left] = t));
     _subs.add(ref
-        .read(rightGloveConnectionProvider)
+        .watch(rightGloveConnectionProvider)
         .telemetry
         .listen((t) => _latest[GloveHand.right] = t));
     ref.onDispose(() {

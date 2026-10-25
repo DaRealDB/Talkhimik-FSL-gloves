@@ -51,9 +51,7 @@ class SettingsController extends Notifier<SettingsState> {
   SettingsState build() {
     _load();
     return const SettingsState();
-  }
-
-  Future<void> _load() async {
+  }  Future<void> _load() async {
     final settings = ref.read(settingsServiceProvider);
     state = SettingsState(
       participantId: await settings.participantId(),
@@ -86,12 +84,41 @@ class SettingsController extends Notifier<SettingsState> {
   }
 
   Future<void> setForceMock(bool value) async {
-    await ref.read(settingsServiceProvider).setForceMock(value);
+    // The live switch (bugfix): persisting alone never swapped the
+    // connection — delegate to the provider that rebuilds the glove
+    // providers (disposing the previous connection) and mirrors the flag.
+    await ref.read(forceMockProvider.notifier).set(value);
     state = state.copyWith(forceMock: value);
   }
 
   Future<void> setDemoScenario(String? value) async {
     await ref.read(settingsServiceProvider).setDemoScenario(value);
     state = state.copyWith(demoScenario: value);
+  }
+}
+
+/// The live Force-mock flag. Toggling flips this state; the glove
+/// connection providers `watch` it, so each hand's connection is swapped
+/// (old one disposed — streams, timers, reconnect loops) without a restart.
+class ForceMockController extends Notifier<bool> {
+  ForceMockController({this.initial = false});
+
+  /// Value the bootstrap preloaded (main.dart) so startup has no flicker.
+  final bool initial;
+
+  @override
+  bool build() {
+    _load();
+    return initial;
+  }
+
+  Future<void> _load() async {
+    final saved = await ref.read(settingsServiceProvider).forceMock();
+    if (ref.mounted && saved != state) state = saved;
+  }
+
+  Future<void> set(bool value) async {
+    await ref.read(settingsServiceProvider).setForceMock(value);
+    state = value;
   }
 }

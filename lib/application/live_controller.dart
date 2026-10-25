@@ -39,8 +39,10 @@ class LiveController extends Notifier<LiveState> {
 
   @override
   LiveState build() {
-    _bind(ref.read(gloveConnectionProvider), GloveHand.left);
-    _bind(ref.read(rightGloveConnectionProvider), GloveHand.right);
+    // watch, not read: a Force-mock toggle swaps the connections and the
+    // live state must rebind to the new instances.
+    _bind(ref.watch(gloveConnectionProvider), GloveHand.left);
+    _bind(ref.watch(rightGloveConnectionProvider), GloveHand.right);
     ref.onDispose(() {
       for (final s in _subs) {
         unawaited(s.cancel());

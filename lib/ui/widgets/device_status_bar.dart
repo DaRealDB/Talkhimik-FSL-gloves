@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
 import '../../data/glove/glove_connection.dart';
+import '../../data/glove/mock_glove_connection.dart';
 import '../../domain/models/device_status.dart';
 
 /// One-line connection status: pairing phase, glove name (mock vs real),
@@ -17,6 +18,7 @@ class DeviceStatusBar extends ConsumerWidget {
   static const errorChipKey = Key('glove-error-chip');
   static const uncalibratedChipKey = Key('glove-uncalibrated-chip');
   static const connectButtonKey = Key('connect-glove-button');
+  static const rightSourceChipKey = Key('right-source-chip');
 
   static bool _busy(GloveConnectionPhase phase) => switch (phase) {
         GloveConnectionPhase.scanning ||
@@ -55,7 +57,12 @@ class DeviceStatusBar extends ConsumerWidget {
     // single-glove look while only the left is connected, and adds the
     // right hand only when it is actually up.
     final rightState = ref.watch(rightGloveControllerProvider);
+    // Per-hand source indicator (bugfix FR-12): never ambiguous whether a
+    // hand is the demo or the real glove — watches the provider so a live
+    // Force-mock swap updates the labels.
     final isMock = ref.watch(gloveIsMockProvider);
+    final rightIsMock =
+        ref.watch(rightGloveConnectionProvider) is MockGloveConnection;
     final scheme = Theme.of(context).colorScheme;
     final status = state.status;
     final rightStatus = rightState.status;
@@ -144,6 +151,18 @@ class DeviceStatusBar extends ConsumerWidget {
                 child: Chip(
                   key: uncalibratedChipKey,
                   label: const Text(AppStrings.uncalibrated),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            // The right glove's source, shown once it is up — the left
+            // glove's source is the main label.
+            if (rightReady)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Chip(
+                  key: rightSourceChipKey,
+                  label: Text(
+                      'R · ${rightIsMock ? AppStrings.mockGloveName : AppStrings.realGloveName}'),
                   visualDensity: VisualDensity.compact,
                 ),
               ),

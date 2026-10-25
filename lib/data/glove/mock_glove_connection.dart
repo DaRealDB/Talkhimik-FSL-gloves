@@ -109,6 +109,10 @@ class MockGloveConnection implements GloveConnection {
   bool _calibrating = false;
   int? _forcedCalError;
 
+  /// Set by [dispose]; in-flight connect() delays and the telemetry engine
+  /// check it so a swapped-out mock never restarts timers (bugfix).
+  bool _disposed = false;
+
   /// Seeded for deterministic tests; the interactive demo doesn't care.
   final math.Random _random = math.Random(42);
 
@@ -137,8 +141,10 @@ class MockGloveConnection implements GloveConnection {
     _stopReconnectTimer();
     _setPhase(GloveConnectionPhase.scanning);
     await Future<void>.delayed(_config.connectStepDelay);
+    if (_disposed) return;
     _setPhase(GloveConnectionPhase.connecting);
     await Future<void>.delayed(_config.connectStepDelay);
+    if (_disposed) return;
     _setPhase(GloveConnectionPhase.ready);
     _emitStatus();
     _emitCalInfo();
@@ -225,6 +231,7 @@ class MockGloveConnection implements GloveConnection {
   }
 
   void _startTelemetry() {
+    if (_disposed) return;
     _telemetryTimer?.cancel();
     _telemetryTimer =
         Timer.periodic(_config.telemetryRate, (_) => _emitTelemetry());
@@ -398,6 +405,7 @@ class MockGloveConnection implements GloveConnection {
 
   @override
   void dispose() {
+    _disposed = true;
     stopScenario();
     _stopReconnectTimer();
     _stopTelemetry();

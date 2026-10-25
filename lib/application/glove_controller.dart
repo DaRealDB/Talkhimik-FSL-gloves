@@ -95,7 +95,9 @@ class GloveController extends Notifier<GloveState> {
 
   @override
   GloveState build() {
-    final connection = ref.read(connectionProvider ?? gloveConnectionProvider);
+    // watch, not read: a Force-mock toggle swaps the connection provider,
+    // and this controller must rebuild onto the new connection.
+    final connection = ref.watch(connectionProvider ?? gloveConnectionProvider);
     _statusSub =
         connection.deviceStatus.listen((s) => state = state.copyWith(status: s));
     _telemetrySub = connection.telemetry

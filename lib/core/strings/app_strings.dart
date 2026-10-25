@@ -11,8 +11,8 @@ class AppStrings {
       'to spoken Filipino words';
 
   // Connection and status (FR-12)
-  static const mockGloveName = 'Mock glove';
-  static const realGloveName = 'Talkhimik Glove';
+  static const mockGloveName = 'Demo glove';
+  static const realGloveName = 'Real glove';
   static const connectionLost = 'Connection lost — reconnecting…';
   static const connected = 'Connected';
   static const disconnected = 'Not connected';

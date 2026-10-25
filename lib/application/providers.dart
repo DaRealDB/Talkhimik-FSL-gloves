@@ -43,18 +43,30 @@ final logStoreProvider = Provider<LogStore>(
       'startup (see main.dart) or in tests'),
 );
 
-/// One connection instance for the app's lifetime. This is the LEFT glove
-/// (keep area: the transcript/demo path is bound to it); the right glove
-/// has its own connection + controller below (master §7.3).
-final gloveConnectionProvider = Provider<GloveConnection>(
-  (ref) => GloveConnectionFactory.create(),
-);
+/// The live Force-mock flag; toggling it swaps each glove's connection
+/// class without a restart (bugfix: the toggle used to need one).
+final forceMockProvider =
+    NotifierProvider<ForceMockController, bool>(ForceMockController.new);
 
-/// The right glove's connection — overridden at startup (main.dart) and in
-/// tests; the default is a second mock via the factory, like the left's.
-final rightGloveConnectionProvider = Provider<GloveConnection>(
-  (ref) => GloveConnectionFactory.createForHand(GloveHand.right),
-);
+/// One connection per glove. The Force-mock flag selects the class; a
+/// toggle rebuilds these providers and disposes the previous connection
+/// (streams, timers, reconnect loops) before creating the new one. This is
+/// the LEFT glove (keep area: the transcript/demo path is bound to it).
+final gloveConnectionProvider = Provider<GloveConnection>((ref) {
+  final forceMock = ref.watch(forceMockProvider);
+  final connection = GloveConnectionFactory.create(forceMock: forceMock);
+  ref.onDispose(connection.dispose);
+  return connection;
+});
+
+/// The right glove's connection — same Force-mock-driven swap as the left.
+final rightGloveConnectionProvider = Provider<GloveConnection>((ref) {
+  final forceMock = ref.watch(forceMockProvider);
+  final connection = GloveConnectionFactory.createForHand(GloveHand.right,
+      forceMock: forceMock);
+  ref.onDispose(connection.dispose);
+  return connection;
+});
 
 /// Right glove's lifecycle controller: same phase/reconnect state machine
 /// as [gloveControllerProvider], bound to [rightGloveConnectionProvider].
@@ -63,9 +75,9 @@ final rightGloveControllerProvider =
         () => GloveController(Future<void>.delayed, rightGloveConnectionProvider));
 
 /// True when the active connection is the simulated glove — gates the
-/// dev-only demo controls.
+/// dev-only demo controls. Watches the provider so a live swap re-gates.
 final gloveIsMockProvider = Provider<bool>(
-  (ref) => ref.read(gloveConnectionProvider) is MockGloveConnection,
+  (ref) => ref.watch(gloveConnectionProvider) is MockGloveConnection,
 );
 
 final gloveControllerProvider =

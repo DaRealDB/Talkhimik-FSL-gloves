@@ -17,6 +17,11 @@ import 'mock_glove_connection.dart';
 class GloveConnectionFactory {
   GloveConnectionFactory._();
 
+  /// True on a physical Android/iOS device — the only platforms with BLE.
+  /// Shared by the factory and the home screen's mock auto-connect gate,
+  /// which must NEVER run on a phone (bugfix).
+  static bool get isMobile => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
   /// The keep-area primary connection — the LEFT glove (master §7.3 binds
   /// the transcript/demo path to it).
   static GloveConnection create({bool forceMock = false}) =>
@@ -25,8 +30,8 @@ class GloveConnectionFactory {
   /// One connection per glove; [hand] binds the BLE scan to the full
   /// advertised name TALKHIMIK-L / TALKHIMIK-R.
   static GloveConnection createForHand(GloveHand hand,
-          {bool forceMock = false}) {
-    final onMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+      {bool forceMock = false}) {
+    final onMobile = isMobile;
     return createWith(onMobile: onMobile, forceMock: forceMock, hand: hand);
   }
 

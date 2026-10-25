@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
+import '../../data/glove/glove_connection_factory.dart';
 import '../../data/glove/mock_glove_connection.dart';
 import '../widgets/demo_controls.dart';
 import '../widgets/device_status_bar.dart';
@@ -25,11 +26,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     // Demo convenience: on dev platforms the mock glove auto-connects so
     // the transcript is one tap away; a saved startup scenario then starts
-    // running. The real glove requires a permission flow (C-S1) and
-    // connects explicitly. Both mock gloves connect so the Live screen
-    // demos two animated hands without hardware (master DoD).
+    // running. NEVER on a phone: the mock must not start itself there even
+    // when Force mock is on (bugfix) — there it connects explicitly.
+    // Both mock gloves connect so the Live screen demos two animated hands
+    // without hardware (master DoD).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!ref.read(gloveIsMockProvider)) return;
+      if (GloveConnectionFactory.isMobile ||
+          !ref.read(gloveIsMockProvider)) {
+        return;
+      }
       final gloveController = ref.read(gloveControllerProvider.notifier);
       await gloveController.connect();
       await ref.read(rightGloveControllerProvider.notifier).connect();

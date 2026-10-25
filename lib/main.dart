@@ -6,10 +6,9 @@ import 'package:path_provider/path_provider.dart';
 
 import 'app.dart';
 import 'application/providers.dart';
-import 'data/glove/glove_connection_factory.dart';
+import 'application/settings_controller.dart';
 import 'data/storage/hive_log_store.dart';
 import 'data/storage/settings_service.dart';
-import 'domain/models/telemetry_packet.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,20 +22,18 @@ Future<void> main() async {
   final logStore = HiveLogStore(Hive);
   await logStore.init();
 
-  // FR field-testing aid: the "Force mock" setting swaps the connection at
-  // startup (the real BLE client is Android-only anyway). One connection
-  // per glove (master §7.3): the keep-area primary is the LEFT hand.
+  // FR field-testing aid: the "Force mock" setting swaps each glove's
+  // connection class (provider-driven, live-swappable — see providers.dart).
+  // The flag is preloaded here so startup has no flicker; from then on the
+  // Settings toggle swaps connections without a restart.
   final settingsService = SharedPrefsSettingsService();
   final forceMock = await settingsService.forceMock();
-  final glove = GloveConnectionFactory.create(forceMock: forceMock);
-  final rightGlove = GloveConnectionFactory.createForHand(GloveHand.right,
-      forceMock: forceMock);
 
   final container = ProviderContainer(
     overrides: [
       logStoreProvider.overrideWithValue(logStore),
-      gloveConnectionProvider.overrideWithValue(glove),
-      rightGloveConnectionProvider.overrideWithValue(rightGlove),
+      forceMockProvider
+          .overrideWith(() => ForceMockController(initial: forceMock)),
     ],
   );
   runApp(UncontrolledProviderScope(container: container, child: const TalkhimikApp()));
