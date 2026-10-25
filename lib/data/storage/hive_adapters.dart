@@ -1,7 +1,6 @@
 import 'package:hive_ce/hive.dart';
 
 import '../../domain/models/log_entry.dart';
-import '../../domain/models/participant.dart';
 
 /// Hand-written TypeAdapters for the Hive boxes.
 ///
@@ -74,32 +73,6 @@ class SyncQueueEntryAdapter extends TypeAdapter<SyncQueueEntry> {
         id: reader.readInt(),
         logEntryId: reader.readInt(),
         createdAt: DateTime.fromMillisecondsSinceEpoch(reader.readInt()),
-      );
-}
-
-class ParticipantProfileAdapter extends TypeAdapter<ParticipantProfile> {
-  @override
-  final int typeId = 3;
-  final int version = 1;
-
-  @override
-  void write(BinaryWriter writer, ParticipantProfile p) {
-    writer
-      ..writeString(p.id)
-      ..writeBool(p.consentGiven)
-      ..writeBool(p.consentDate != null)
-      ..writeInt(p.consentDate?.millisecondsSinceEpoch ?? 0)
-      ..writeBool(p.isMinor);
-  }
-
-  @override
-  ParticipantProfile read(BinaryReader reader) => ParticipantProfile(
-        id: reader.readString(),
-        consentGiven: reader.readBool(),
-        consentDate: reader.readBool()
-            ? DateTime.fromMillisecondsSinceEpoch(reader.readInt())
-            : null,
-        isMinor: reader.readBool(),
       );
 }
 

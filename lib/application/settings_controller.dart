@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/models/participant.dart';
 import 'providers.dart';
 
 /// Participant and dev settings (SRS FR-13, FR-15 demo options).
@@ -70,7 +69,6 @@ class SettingsController extends Notifier<SettingsState> {
     final trimmed = id.trim();
     await ref.read(settingsServiceProvider).setParticipantId(trimmed);
     state = state.copyWith(participantId: trimmed);
-    await _syncProfile();
   }
 
   Future<void> setConsentGiven(bool consent) async {
@@ -81,24 +79,10 @@ class SettingsController extends Notifier<SettingsState> {
       consentGiven: consent,
       consentDate: consent ? DateTime.now() : null,
     );
-    await _syncProfile();
   }
 
   Future<void> setIsMinor(bool isMinor) async {
     state = state.copyWith(isMinor: isMinor);
-    await _syncProfile();
-  }
-
-  /// FR-13: keep the anonymized profile in the local store — id only,
-  /// consent state, minor flag. Never names (DR-4, NFR-8).
-  Future<void> _syncProfile() async {
-    if (state.participantId.isEmpty) return;
-    await ref.read(logStoreProvider).upsertParticipant(ParticipantProfile(
-          id: state.participantId,
-          consentGiven: state.consentGiven,
-          consentDate: state.consentDate,
-          isMinor: state.isMinor,
-        ));
   }
 
   Future<void> setForceMock(bool value) async {

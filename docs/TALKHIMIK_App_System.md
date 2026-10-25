@@ -217,7 +217,6 @@ Connect tap → permissions (C-S1) → adapter on → scan (UNFILTERED; the
 |---|---|
 | `events` | `GestureLogEntry` rows (FR-10 schema: participant, session, word, confidence, latencyMs, glove timestamp, corrected, source, app/model version) |
 | `syncQueue` | offline sync queue (C-S4) — every append enqueues; `markSynced` drains |
-| `participants` | `ParticipantProfile` (anonymized ID, consent fields) |
 | `sessions` | `SessionMeta` (startedAt, newest-first listing) |
 
 Web: IndexedDB (`Hive.init('')` — path ignored). Windows/Android: app support

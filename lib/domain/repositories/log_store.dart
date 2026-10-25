@@ -1,8 +1,7 @@
 import '../models/log_entry.dart';
-import '../models/participant.dart';
 
-/// Local persistence for recognition events, sessions, the offline sync
-/// queue, and participant profiles (SRS FR-10, FR-13, FR-16).
+/// Local persistence for recognition events, sessions, and the offline
+/// sync queue (SRS FR-10, FR-16).
 ///
 /// The Hive implementation backs this on both Windows (dev) and Android
 /// (field). A Firestore-backed implementation can replace it later without
@@ -20,12 +19,6 @@ abstract interface class LogStore {
 
   /// All sessions, newest first.
   Future<List<SessionMeta>> sessions();
-
-  Future<void> upsertParticipant(ParticipantProfile profile);
-
-  Future<ParticipantProfile?> getParticipant(String id);
-
-  Future<List<ParticipantProfile>> allParticipants();
 
   /// Entries still waiting for cloud flush (offline queue, C-S4).
   Future<List<SyncQueueEntry>> pendingSyncs();

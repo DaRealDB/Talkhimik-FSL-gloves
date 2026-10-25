@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:talkhimik_app/data/storage/hive_log_store.dart';
 import 'package:talkhimik_app/domain/models/log_entry.dart';
-import 'package:talkhimik_app/domain/models/participant.dart';
 
 GestureLogEntry sampleEntry({
   String participantId = 'P-001',
@@ -127,22 +126,6 @@ void main() {
 
     final sessions = await store.sessions();
     expect(sessions.map((s) => s.sessionId), ['S-2', 'S-1']);
-  });
-
-  test('participants round-trip including consent fields', () async {
-    final profile = ParticipantProfile(
-      id: 'P-042',
-      consentGiven: true,
-      consentDate: DateTime(2026, 9, 1),
-      isMinor: false,
-    );
-    await store.upsertParticipant(profile);
-
-    final read = await store.getParticipant('P-042');
-    expect(read, isNotNull);
-    expect(read!.consentGiven, isTrue);
-    expect(read.consentDate, DateTime(2026, 9, 1));
-    expect(await store.getParticipant('nope'), isNull);
   });
 
   test('markSynced removes only the marked queue entries', () async {

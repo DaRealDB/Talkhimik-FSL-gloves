@@ -1,5 +1,4 @@
 import 'package:talkhimik_app/domain/models/log_entry.dart';
-import 'package:talkhimik_app/domain/models/participant.dart';
 import 'package:talkhimik_app/domain/repositories/log_store.dart';
 
 /// Test/demo [LogStore] with no persistence. Widget tests override the
@@ -7,7 +6,6 @@ import 'package:talkhimik_app/domain/repositories/log_store.dart';
 class InMemoryLogStore implements LogStore {
   final List<GestureLogEntry> events = [];
   final List<SessionMeta> sessionList = [];
-  final Map<String, ParticipantProfile> participants = {};
   final List<SyncQueueEntry> syncQueue = [];
   int _nextId = 1;
 
@@ -37,19 +35,6 @@ class InMemoryLogStore implements LogStore {
   @override
   Future<List<SessionMeta>> sessions() async =>
       [...sessionList]..sort((a, b) => b.startedAt.compareTo(a.startedAt));
-
-  @override
-  Future<void> upsertParticipant(ParticipantProfile profile) async {
-    participants[profile.id] = profile;
-  }
-
-  @override
-  Future<ParticipantProfile?> getParticipant(String id) async =>
-      participants[id];
-
-  @override
-  Future<List<ParticipantProfile>> allParticipants() async =>
-      participants.values.toList();
 
   @override
   Future<List<SyncQueueEntry>> pendingSyncs() async => List.of(syncQueue);

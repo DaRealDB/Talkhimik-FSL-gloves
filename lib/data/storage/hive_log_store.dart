@@ -1,7 +1,6 @@
 import 'package:hive_ce/hive.dart';
 
 import '../../domain/models/log_entry.dart';
-import '../../domain/models/participant.dart';
 import '../../domain/repositories/log_store.dart';
 import 'hive_adapters.dart';
 
@@ -11,18 +10,15 @@ class HiveLogStore implements LogStore {
   HiveLogStore(this._hive, {String boxPrefix = ''})
       : _eventsBox = '${boxPrefix}events',
         _syncBox = '${boxPrefix}syncQueue',
-        _participantsBox = '${boxPrefix}participants',
         _sessionsBox = '${boxPrefix}sessions';
 
   final HiveInterface _hive;
   final String _eventsBox;
   final String _syncBox;
-  final String _participantsBox;
   final String _sessionsBox;
 
   late Box<GestureLogEntry> _events;
   late Box<SyncQueueEntry> _syncQueue;
-  late Box<ParticipantProfile> _participants;
   late Box<SessionMeta> _sessions;
 
   static bool _adaptersRegistered = false;
@@ -33,7 +29,6 @@ class HiveLogStore implements LogStore {
     hive
       ..registerAdapter(GestureLogEntryAdapter(), internal: true)
       ..registerAdapter(SyncQueueEntryAdapter(), internal: true)
-      ..registerAdapter(ParticipantProfileAdapter(), internal: true)
       ..registerAdapter(SessionMetaAdapter(), internal: true);
     _adaptersRegistered = true;
   }
@@ -43,7 +38,6 @@ class HiveLogStore implements LogStore {
     registerAdapters(_hive);
     _events = await _hive.openBox<GestureLogEntry>(_eventsBox);
     _syncQueue = await _hive.openBox<SyncQueueEntry>(_syncBox);
-    _participants = await _hive.openBox<ParticipantProfile>(_participantsBox);
     _sessions = await _hive.openBox<SessionMeta>(_sessionsBox);
   }
 
@@ -76,18 +70,6 @@ class HiveLogStore implements LogStore {
         ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
 
   @override
-  Future<void> upsertParticipant(ParticipantProfile profile) =>
-      _participants.put(profile.id, profile);
-
-  @override
-  Future<ParticipantProfile?> getParticipant(String id) async =>
-      _participants.get(id);
-
-  @override
-  Future<List<ParticipantProfile>> allParticipants() async =>
-      _participants.values.toList();
-
-  @override
   Future<List<SyncQueueEntry>> pendingSyncs() async => [
         for (final e in _syncQueue.toMap().entries)
           SyncQueueEntry(
@@ -108,7 +90,6 @@ class HiveLogStore implements LogStore {
   Future<void> close() async {
     await _events.close();
     await _syncQueue.close();
-    await _participants.close();
     await _sessions.close();
   }
 }

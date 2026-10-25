@@ -76,8 +76,8 @@ void main() {
     expect(await settings.largeText(), isFalse);
   });
 
-  testWidgets('participant id + consent write an anonymized profile to the '
-      'log store (FR-13)', (tester) async {
+  testWidgets('participant id + consent persist to settings (FR-13)',
+      (tester) async {
     await pumpSettings(tester);
 
     await tester.enterText(
@@ -90,15 +90,13 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('consent-switch')));
+
     await tester.pumpAndSettle();
 
+    // Anonymized: the app stores an id only — no name field at all.
     expect(settings.participant, 'P-042');
     expect(await settings.consentGiven(), isTrue);
-    final profile = logStore.participants['P-042'];
-    expect(profile, isNotNull);
-    expect(profile!.consentGiven, isTrue);
-    expect(profile.consentDate, isNotNull);
-    // Anonymized: the profile carries no name field at all.
+    expect(await settings.consentDate(), isNotNull);
   });
 
   testWidgets('voice dropdown offers the engine voices', (tester) async {
