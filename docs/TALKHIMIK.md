@@ -308,3 +308,28 @@ The thesis-level narrative (architecture, phases, budget, ML pipeline) lives
 in the thesis folder: `Desktop/thesis sep4/` — `TALKHIMIK_System_Architecture.md`,
 `TALKHIMIK_Code_Reference.md`, and the firmware repo `talkhimik-ble/`
 (README: wiring, build steps, packet quickstart).
+
+---
+
+## 12. Design system (2026-10 refresh)
+
+Source of truth: `lib/core/theme/app_theme.dart` (`AppColors` + the
+`TalkhimikTokens` ThemeExtension). LIGHT is the primary theme; dark derives
+from the same hues.
+
+| Token | Light | Role |
+|---|---|---|
+| primary | `#067A4C` | App bar, filled buttons, active tab (white text, AA) |
+| secondary | `#17713F` | Diagonal corner, outlines |
+| tertiary | `#7CA526` | Header bands; on-band text `#1C280A` (AA — white fails) |
+| background / surface | `#D6D4CD` / `#EAE8E2` | Warm-gray page / cards |
+| success / warning / error | `#1B7A3D` / `#B26A00` / `#B3261E` | State colors |
+| finger gradient | `#D8D0C4` → `#7CA526` | Flexion fill (neutral → lime) |
+
+Radius: cards 16 · controls 12 · pills 999. Elevation: cards 1 (soft
+shadow), app bar 0. Confidence badges are **outline-style** (dot + border +
+tint) so they never read as brand surfaces; finger states keep non-color
+cues (✗ hatch, ⚠ amber, desaturation, 40 % opacity). Shared `HeaderBand`
+(olive-lime band + diagonal corner + chip) heads every panel; pill tabs
+switch L/R and navigation. "Reduce motion" is respected by the hand
+animation.
