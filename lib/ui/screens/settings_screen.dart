@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
 import '../../data/glove/mock_glove_connection.dart';
+import '../widgets/ble_diagnostics_panel.dart';
 import '../widgets/header_band.dart';
 
 /// FR-15 (language, voice, rate, large text), FR-13 (anonymized participant
@@ -164,6 +165,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onChanged: (v) => settingsController.setDemoScenario(v),
                 ),
               ),
+              // Live link diagnostics (fix B1) — works with mock values too.
+              const BleDiagnosticsPanel(),
             ],
           ),
               ],

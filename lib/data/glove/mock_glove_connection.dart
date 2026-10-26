@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import '../../core/constants/gatt_ids.dart';
 import '../../domain/models/cal_info_packet.dart';
 import '../../domain/models/device_status.dart';
 import '../../domain/models/gesture_result.dart';
 import '../../domain/models/telemetry_packet.dart';
+import 'ble_diagnostics.dart';
 import 'glove_connection.dart';
 
 /// Demo/test scenarios the mock can run (dev-only; FR debug aid).
@@ -77,6 +79,11 @@ class MockGloveConnection implements GloveConnection {
   /// byte carries it.
   final GloveHand hand;
 
+  /// Link diagnostics (fix B1): the mock fills plausible values so the
+  /// Developer panel demos everywhere.
+  @override
+  final BleDiagnostics diagnostics = BleDiagnostics();
+
   final _gestures = StreamController<GestureResultPacket>.broadcast();
   final _telemetry = StreamController<TelemetryPacket>.broadcast();
   final _status = StreamController<DeviceStatusPacket>.broadcast();
@@ -146,6 +153,11 @@ class MockGloveConnection implements GloveConnection {
     await Future<void>.delayed(_config.connectStepDelay);
     if (_disposed) return;
     _setPhase(GloveConnectionPhase.ready);
+    diagnostics.mtu = 247;
+    diagnostics.bondState = 'none';
+    diagnostics.notifyResults[GattIds.telemetry] = 'ok';
+    diagnostics.notifyResults[GattIds.deviceStatus] = 'ok';
+    diagnostics.notifyResults[GattIds.calInfo] = 'ok';
     _emitStatus();
     _emitCalInfo();
     if (_config.telemetryEnabled) _startTelemetry();
@@ -246,6 +258,11 @@ class MockGloveConnection implements GloveConnection {
   void _emitTelemetry() {
     _seq++;
     _animTime += _config.telemetryRate.inMilliseconds / 1000.0;
+    diagnostics.notifyCounts[GattIds.telemetry] =
+        (diagnostics.notifyCounts[GattIds.telemetry] ?? 0) + 1;
+    diagnostics.lastPayloadLength = 29;
+    diagnostics.lastTelemetryAt = _clock();
+    diagnostics.touch();
     final angles = [
       for (var i = 0; i < 5; i++)
         ((45 + 40 * math.sin(_animTime * 2 + i * 0.7)).clamp(0.0, 90.0))

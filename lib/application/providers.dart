@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import '../core/constants/app_version.dart';
 import '../data/dataset/dataset_file_writer.dart';
+import '../data/glove/ble_diagnostics.dart';
 import '../data/glove/glove_connection.dart';
 import '../data/glove/glove_connection_factory.dart';
 import '../data/glove/mock_glove_connection.dart';
@@ -82,6 +83,18 @@ final gloveIsMockProvider = Provider<bool>(
 
 final gloveControllerProvider =
     NotifierProvider<GloveController, GloveState>(GloveController.new);
+
+/// Per-hand BLE link diagnostics (fix B1): rendered by the Settings →
+/// Developer panel. Watches the connections so a Force-mock swap rebinds.
+final bleDiagnosticsProvider =
+    Provider<Map<GloveHand, BleDiagnostics>>((ref) {
+  final left = ref.watch(gloveConnectionProvider);
+  final right = ref.watch(rightGloveConnectionProvider);
+  return {
+    GloveHand.left: left.diagnostics,
+    GloveHand.right: right.diagnostics,
+  };
+});
 
 /// Both gloves' live snapshots for the /live screen (master §6.1).
 final liveControllerProvider =

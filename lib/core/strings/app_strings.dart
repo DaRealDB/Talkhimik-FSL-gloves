@@ -22,6 +22,21 @@ class AppStrings {
   static const uncalibratedBanner = 'Uncalibrated — calibrate now';
   static const connectGloves = 'Connect gloves';
   static const listening = 'Listening';
+  static const mtuTooSmall = 'Glove data link too small (MTU)';
+  static const notifyTelemetryFailed =
+      'Notifications could not be enabled on the glove';
+  // BLE diagnostics (Developer panel, fix B1)
+  static const bleDiagnosticsTitle = 'BLE diagnostics';
+  static const diagPhase = 'Phase';
+  static const diagBond = 'Bond';
+  static const diagMtu = 'MTU';
+  static const diagChars = 'Characteristics';
+  static const diagNotify = 'Notify results';
+  static const diagFrames = 'Frames';
+  static const diagLastLen = 'Last payload';
+  static const diagRejects = 'Rejects';
+  static const diagLastError = 'Last error';
+  static const diagFreshness = 'Since telemetry';
   static const connectionLost = 'Connection lost — reconnecting…';
   static const connected = 'Connected';
   static const disconnected = 'Not connected';

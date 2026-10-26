@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:talkhimik_app/data/glove/ble_diagnostics.dart';
 import 'package:talkhimik_app/data/glove/glove_connection.dart';
 import 'package:talkhimik_app/domain/models/cal_info_packet.dart';
 import 'package:talkhimik_app/domain/models/device_status.dart';
@@ -27,6 +28,9 @@ class FakeGloveConnection implements GloveConnection {
   /// When set, [connect] throws it — simulating permission denial, a glove
   /// that never appears in the scan, etc.
   Exception? throwOnConnect;
+
+  @override
+  final BleDiagnostics diagnostics = BleDiagnostics();
 
   @override
   Stream<GestureResultPacket> get gestureResults => gestures.stream;

@@ -1,5 +1,6 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' show FlutterBluePlus, LogLevel;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:path_provider/path_provider.dart';
@@ -12,6 +13,12 @@ import 'data/storage/settings_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // BLE diagnostics (fix B1): verbose plugin logs in debug builds only.
+  if (kDebugMode) {
+    await FlutterBluePlus.setLogLevel(LogLevel.verbose, color: false);
+    debugPrint('[ble] verbose logging enabled (debug build)');
+  }
 
   // Local persistence (FR-10): Hive boxes for events, the sync queue,
   // participants, and sessions. Pure Dart — same behavior on Windows and

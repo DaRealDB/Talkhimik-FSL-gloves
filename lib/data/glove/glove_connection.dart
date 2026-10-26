@@ -2,6 +2,7 @@ import '../../domain/models/cal_info_packet.dart';
 import '../../domain/models/device_status.dart';
 import '../../domain/models/gesture_result.dart';
 import '../../domain/models/telemetry_packet.dart';
+import 'ble_diagnostics.dart';
 
 /// Connection lifecycle, as shown in the device status bar (FR-12).
 enum GloveConnectionPhase {
@@ -72,6 +73,9 @@ abstract interface class GloveConnection {
 
   /// Drives the status bar and the auto-reconnect state machine.
   Stream<GloveConnectionPhase> get phaseChanges;
+
+  /// Live link diagnostics for the Developer panel (fix B1).
+  BleDiagnostics get diagnostics;
 
   /// Scan (by device name prefix + service) → connect → discover →
   /// subscribe.
