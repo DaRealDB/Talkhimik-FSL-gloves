@@ -152,6 +152,23 @@ lib/
 - Reconnect per hand: backoff 1→2→4→8→30 s, "connection lost" banner ≤ 3 s,
   stateless glove re-runs the full flow (C-F7).
 
+### Connection sequence (hardened, fix B2)
+
+Strictly sequential, per glove, with awaits and timeouts:
+`connect → clearGattCache if bonded (Android, before discovery — never
+createBond; system pairing is neither required nor depended on) →
+discoverServices → validate the 4 characteristics → requestMtu(247),
+REQUIRE ≥ 32 (retry once, else surface "Glove data link too small") →
+setNotifyValue TELEMETRY → STATUS → CAL_INFO (each awaited, retried once,
+failures surfaced) → subscribe via onValueReceived → READ STATUS + CAL_INFO
+→ balanced priority → ready.`
+
+Every step, notify result, frame count, and decode rejection (by reason:
+length / exception / hand) is recorded in the per-hand `BleDiagnostics`
+object and rendered under **Settings → Developer → BLE diagnostics** — also
+with mock values in demo mode. Verbose `flutter_blue_plus` logs are enabled
+in debug builds.
+
 ### Feature map
 
 | Code | Feature | Where |
@@ -266,6 +283,9 @@ seq-gap loss, trailing-second update rate, mismatch flag):
   and Uncalibrated chip; Live hand moves; wizard steps 1–10 with `cal_id`
   bump; record labeled take → CSV + sidecar; connection-lost banner ≤ 3 s
   with 1→2→4→8→30 s backoff; walk out of range and back — no dupes.
+  **On-device link diagnostics** (no frames? wrong MTU?): Settings →
+  Developer → BLE diagnostics — report MTU, notify results, last payload
+  length, reject reasons, bond state.
 - **D.** Regression: Force mock on → demo still works end-to-end.
 
 ---
