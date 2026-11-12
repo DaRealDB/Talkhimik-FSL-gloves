@@ -138,6 +138,24 @@ class AppStrings {
   static const recordStart = 'Start recording';
   static const recordAbort = 'Abort';
 
+  // Dataset coverage + share-all (C2)
+  static const restLabelItem = 'REST — hand relaxed';
+  static const coverageTitle = 'Dataset coverage';
+  static const coverageHint =
+      'Record each letter 10+ times; move your hand a little between '
+      'takes; record REST so the app knows when you are not signing.';
+  static const coverageLater = 'later';
+  static const coverageNeedsData = 'needs data';
+  static const coverageOk = 'ok';
+  static const coverageGood = 'good';
+  static const shareAll = 'Share all for training';
+  static const shareAllNoData =
+      'No recorded data yet — record some takes first.';
+  static String coverageSummary(int ready, int targets, int takes,
+          int restTakes) =>
+      '$ready of $targets letters ready · $takes takes · '
+      '$restTakes REST takes';
+
   // Phone-side recognition (C1)
   static const recognitionSection = 'Recognition';
   static const recognitionSigningHand = 'Signing hand';

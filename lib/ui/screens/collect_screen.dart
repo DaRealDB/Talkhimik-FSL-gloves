@@ -3,10 +3,12 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../application/coverage_controller.dart';
 import '../../application/dataset_recorder_controller.dart';
 import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/dataset/coverage_index.dart';
 import '../widgets/anim.dart';
 import '../widgets/header_band.dart';
 
@@ -23,16 +25,69 @@ class CollectScreen extends ConsumerStatefulWidget {
 class _CollectScreenState extends ConsumerState<CollectScreen> {
   final TextEditingController _labelController = TextEditingController();
 
+  /// The picker/coverage-chip selection, mirrored into the free-text field
+  /// (which is what [DatasetRecorderController.startTake] records).
+  String? _selectedLabel;
+
   @override
   void dispose() {
     _labelController.dispose();
     super.dispose();
   }
 
+  void _selectLabel(String stored) {
+    setState(() => _selectedLabel = stored);
+    _labelController.text = stored;
+  }
+
+  Future<void> _shareAll() async {
+    final recorder = ref.read(datasetRecorderControllerProvider.notifier);
+    final files = <XFile>[];
+    for (final s in ref.read(datasetRecorderControllerProvider).sessions) {
+      for (final p in await recorder.pathsFor(s)) {
+        files.add(XFile(p));
+      }
+    }
+    // The coverage index travels with the data so training can rebuild it.
+    final dir = await ref.read(datasetDirectoryProvider);
+    files.add(XFile('${dir.path}/${CoverageIndexStore.fileName}'));
+    if (!mounted) return;
+    await SharePlus.instance.share(ShareParams(files: files));
+  }
+
+  /// One coverage chip: label + take count + state icon. State is shown
+  /// with an icon AND a number, never color alone (design system rule);
+  /// the icon's meaning is in the Tooltip. Tapping preselects the label.
+  Widget _coverageChip(
+      BuildContext context, CoverageState coverage, String label) {
+    final takes = coverage.index?.labels[label]?.takes ?? 0;
+    final cState = coverageLevelFor(label, takes);
+    final (icon, stateName) = switch (cState) {
+      CoverageLevel.later =>
+        (Icons.schedule, AppStrings.coverageLater),
+      CoverageLevel.needsData =>
+        (Icons.hourglass_empty, AppStrings.coverageNeedsData),
+      CoverageLevel.ok =>
+        (Icons.check_circle_outline, AppStrings.coverageOk),
+      CoverageLevel.good => (Icons.verified, AppStrings.coverageGood),
+    };
+    final display = label == restLabel ? 'REST' : label;
+    return Tooltip(
+      message: stateName,
+      child: ActionChip(
+        avatar: Icon(icon, size: 18),
+        label: Text('$display · $takes'),
+        onPressed: () => _selectLabel(label),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(datasetRecorderControllerProvider);
     final recorder = ref.read(datasetRecorderControllerProvider.notifier);
+    final coverage = ref.watch(coverageControllerProvider);
+    final letters = ref.read(vocabularyRepositoryProvider).letters;
     final recording = state.phase == RecordingPhase.recording;
 
     return Scaffold(
@@ -62,14 +117,15 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
           ],
           // Label: vocabulary picker + free-text fallback (master §12.5).
           DropdownButtonFormField<String>(
-            initialValue: state.label.isEmpty ? null : state.label,
+            initialValue:
+                _selectedLabel ?? (state.label.isEmpty ? null : state.label),
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: AppStrings.datasetLabel,
             ),
             items: [
               for (final e in [
-                ...ref.read(vocabularyRepositoryProvider).letters,
+                ...letters,
                 ...ref.read(vocabularyRepositoryProvider).phrases,
               ])
                 DropdownMenuItem(
@@ -77,9 +133,14 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
                   child: Text('${e.filipino} (${e.english})',
                       overflow: TextOverflow.ellipsis),
                 ),
+              // The special REST take: stored as `_rest` in the CSV.
+              const DropdownMenuItem(
+                value: restLabel,
+                child: Text(AppStrings.restLabelItem),
+              ),
             ],
             onChanged: (v) {
-              if (v != null) _labelController.text = v;
+              if (v != null) _selectLabel(v);
             },
           ),
           const SizedBox(height: 8),
@@ -168,6 +229,55 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
                   ),
                 ),
               ],
+            ),
+          ],
+          const SizedBox(height: 24),
+          // ---- Dataset coverage card (C2) ----
+          Text(AppStrings.coverageTitle,
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            AppStrings.coverageSummary(
+              coverage.readyCount(letters),
+              letters.length - CoverageThresholds.laterLabels.length + 1,
+              coverage.index?.totalTakes ?? 0,
+              coverage.index?.restTakes ?? 0,
+            ),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final label in [
+                for (final e in letters) e.filipino,
+                restLabel,
+              ])
+                _coverageChip(context, coverage, label),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            AppStrings.coverageHint,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            key: const Key('share-all-button'),
+            icon: const Icon(Icons.ios_share),
+            label: const Text(AppStrings.shareAll),
+            onPressed: state.sessions.isEmpty ? null : _shareAll,
+          ),
+          if (state.sessions.isEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              AppStrings.shareAllNoData,
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
           const SizedBox(height: 24),

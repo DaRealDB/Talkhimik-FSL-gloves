@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import '../core/constants/app_version.dart';
+import '../data/dataset/coverage_index.dart';
 import '../data/dataset/dataset_file_writer.dart';
 import '../data/glove/ble_diagnostics.dart';
 import '../data/glove/glove_connection.dart';
@@ -18,6 +19,7 @@ import '../domain/models/telemetry_packet.dart';
 import '../domain/repositories/log_store.dart';
 import '../domain/repositories/vocabulary_repository.dart';
 import 'calibration_controller.dart';
+import 'coverage_controller.dart';
 import 'dataset_recorder_controller.dart';
 import 'export_controller.dart';
 import 'glove_controller.dart';
@@ -154,6 +156,15 @@ final datasetDirectoryProvider = Provider<Future<Directory>>((ref) async {
 final datasetWriterProvider = Provider<DatasetFileWriter>(
   (ref) => DatasetFileWriter(() => ref.read(datasetDirectoryProvider)),
 );
+
+/// Dataset coverage index (C2) — derived cache over the session CSVs.
+final coverageIndexStoreProvider = Provider<CoverageIndexStore>(
+  (ref) => CoverageIndexStore(() => ref.read(datasetDirectoryProvider)),
+);
+
+final coverageControllerProvider =
+    NotifierProvider<CoverageController, CoverageState>(
+        CoverageController.new);
 
 final datasetRecorderControllerProvider =
     NotifierProvider<DatasetRecorderController, RecorderState>(
