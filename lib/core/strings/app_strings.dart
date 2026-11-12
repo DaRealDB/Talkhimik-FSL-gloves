@@ -172,6 +172,7 @@ class AppStrings {
       'Stand-in rules — replaced by the trained model later.';
   static const recogDebugClassifier = 'Classifier';
   static const recogDebugModelVersion = 'Model version';
+  static const recogDebugTrainedOn = 'Trained on';
   static const recogDebugActiveHand = 'Hand';
   static const recogDebugRawClass = 'Raw class';
   static const recogDebugRawLabel = 'Raw letter';

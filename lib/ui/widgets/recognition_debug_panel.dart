@@ -70,6 +70,8 @@ class RecognitionDebugPanel extends ConsumerWidget {
         row(AppStrings.recogDebugClassifier, recog.classifier),
         row(AppStrings.recogDebugModelVersion, recog.modelVersion),
         row(AppStrings.recogDebugActiveHand, hand),
+        if (recog.modelTrainedOn != null)
+          row(AppStrings.recogDebugTrainedOn, recog.modelTrainedOn!),
         row(AppStrings.recogDebugRawClass, recog.rawClass ?? '—'),
         row(AppStrings.recogDebugRawLabel, recog.rawLabel ?? '—'),
         row(

@@ -10,11 +10,13 @@ import '../data/glove/ble_diagnostics.dart';
 import '../data/glove/glove_connection.dart';
 import '../data/glove/glove_connection_factory.dart';
 import '../data/glove/mock_glove_connection.dart';
+import '../data/model/model_asset_loader.dart';
 import '../data/storage/calinfo_cache.dart';
 import '../data/storage/settings_service.dart';
 import '../data/tts/flutter_tts_service.dart';
 import '../data/tts/tts_service.dart';
 import '../data/vocab/default_vocabulary_repository.dart';
+import '../domain/classifier/model_bundle.dart';
 import '../domain/models/telemetry_packet.dart';
 import '../domain/repositories/log_store.dart';
 import '../domain/repositories/vocabulary_repository.dart';
@@ -112,6 +114,12 @@ final recognitionControllerProvider =
 /// glove connection's own [GloveConnection.gestureResults] stream.
 final recognitionEventBusProvider =
     Provider<RecognitionEventBus>((ref) => RecognitionEventBus());
+
+/// Shipped model bundle (C4): labels.json + weights.json from assets.
+/// Null = no usable model — the recognizer falls back to the C1
+/// threshold rules, and the app works with no model present.
+final modelBundleProvider = FutureProvider<ModelBundle?>(
+    (ref) => ModelAssetLoader().load());
 
 final appVersionProvider = Provider<String>((ref) => kAppVersion);
 

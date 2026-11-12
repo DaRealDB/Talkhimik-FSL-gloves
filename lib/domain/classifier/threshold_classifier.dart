@@ -132,13 +132,27 @@ class ThresholdClassifier implements GestureClassifier {
   const ThresholdClassifier();
 
   @override
+  String get source => RecognitionConstants.thresholdSource;
+
+  @override
+  String get modelVersion => RecognitionConstants.thresholdModelVersion;
+
+  /// The stand-in has no REST class and no trained floor — its cap is the
+  /// merged-class ceiling instead.
+  @override
+  String? get restLabel => null;
+
+  @override
+  double? get confidenceFloor => null;
+
+  @override
   Prediction? classifyFrame(HandFrame frame) {
     for (final rule in thresholdRules) {
       if (rule.matches(frame.angles)) {
         return Prediction(
           label: rule.label,
           confidence: RecognitionConstants.thresholdConfidenceCap,
-          source: RecognitionConstants.thresholdSource,
+          source: source,
           className: rule.className,
         );
       }

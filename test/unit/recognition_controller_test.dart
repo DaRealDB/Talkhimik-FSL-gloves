@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:talkhimik_app/application/providers.dart';
+import 'package:talkhimik_app/domain/classifier/model_bundle.dart';
 import 'package:talkhimik_app/domain/models/device_status.dart';
 import 'package:talkhimik_app/domain/models/gesture_result.dart';
 import 'package:talkhimik_app/domain/models/telemetry_packet.dart';
@@ -28,9 +29,49 @@ TelemetryPacket fistFrame(int seq,
       receivedAt: at ?? DateTime.now(),
     );
 
+/// A hand-crafted 2-class model (A vs _rest): class score tracks the
+/// angle sum — a fist (sum ~330) is 'A', a relaxed pose (sum ~85) is
+/// '_rest', both with confidence ~1.0. Floor is parameterized per test.
+String testBundleJson({required double floor, String hand = 'L'}) {
+  final labels = '''
+{
+  "version": 1, "hand": "$hand", "rest_class": "_rest",
+  "input_spec": {"order": ["ang_thumb","ang_pointer","ang_middle",
+    "ang_ring","ang_pinky"], "units": 5, "variant": "A"},
+  "classes": [
+    {"index": 0, "label": "A", "word_id": 1},
+    {"index": 1, "label": "_rest", "word_id": 0}
+  ],
+  "confidence_floor": $floor, "floor_precision_95": true,
+  "trained_on": {"dataset_hash": "abc12345", "signers": ["P-001"]}
+}
+''';
+  return labels;
+}
+
+const testWeightsJson = '''
+{
+  "input_order": ["ang_thumb","ang_pointer","ang_middle","ang_ring",
+    "ang_pinky"],
+  "classes": ["A", "_rest"],
+  "layers": [
+    {"weights": [[0.002222, -0.002222], [0.002222, -0.002222],
+      [0.002222, -0.002222], [0.002222, -0.002222],
+      [0.002222, -0.002222]],
+     "bias": [0, 1]},
+    {"weights": [[10, -10], [-10, 10]], "bias": [0, 0]}
+  ]
+}
+''';
+
+ModelBundle testBundle({double floor = 0.5, String hand = 'L'}) =>
+    ModelBundle.assemble(testBundleJson(floor: floor, hand: hand),
+        testWeightsJson)!;
+
 void main() {
   (ProviderContainer, FakeGloveConnection, FakeGloveConnection, InMemorySettingsService,
-      InMemoryLogStore, FakeTtsService) makeContainer({bool mock = false}) {
+      InMemoryLogStore, FakeTtsService) makeContainer(
+      {bool mock = false, ModelBundle? bundle}) {
     final left = FakeGloveConnection();
     final right = FakeGloveConnection();
     final settings = InMemorySettingsService();
@@ -44,6 +85,7 @@ void main() {
       logStoreProvider.overrideWithValue(logs),
       ttsServiceProvider.overrideWithValue(tts),
       calInfoCacheProvider.overrideWithValue(InMemoryCalInfoCache()),
+      modelBundleProvider.overrideWith((ref) => Future.value(bundle)),
     ]);
     addTearDown(c.dispose);
     c.read(liveControllerProvider);
@@ -246,5 +288,106 @@ void main() {
     }
 
     expect(c.read(recognitionControllerProvider).enabled, isFalse);
+  });
+
+  test('C4: a matching model runs on held frames — bubble carries the '
+      'model source, version, and uncapped vote-shared confidence',
+      () async {
+    final (c, left, _, _, logs, tts) = makeContainer(bundle: testBundle());
+    c.read(transcriptControllerProvider);
+    await pump(c);
+    await pump(c);
+
+    left.emitStatus(const DeviceStatusPacket(uncalibrated: false));
+    for (var i = 0; i < 25; i++) {
+      left.emitTelemetry(fistFrame(i));
+      await pump(c);
+    }
+
+    final recog = c.read(recognitionControllerProvider);
+    expect(recog.classifier, 'phone-tflite');
+    expect(recog.modelVersion, 'mlp-abc12345');
+    expect(recog.modelTrainedOn, contains('abc12345'));
+
+    final transcript = c.read(transcriptControllerProvider);
+    expect(transcript.entries.length, 1);
+    final entry = transcript.entries.first;
+    expect(entry.wordId, 1);
+    expect(entry.filipino, 'A');
+    expect(entry.source, 'phone-tflite');
+    // vote share 10/20 x ~1.0 model confidence = ~50 (no stand-in cap).
+    expect(entry.confidence, inInclusiveRange(45, 55));
+    expect(tts.spoken, contains('A'));
+
+    final logEntries = await logs.eventsForSession(transcript.sessionId);
+    expect(logEntries.first.source, 'phone-tflite');
+    expect(logEntries.first.modelVersion, 'mlp-abc12345');
+  });
+
+  test('C4: below the confidence floor nothing is emitted (counts as a '
+      'release, never a guess)', () async {
+    final (c, left, _, _, _, _) =
+        makeContainer(bundle: testBundle(floor: 1.0));
+    c.read(transcriptControllerProvider);
+    await pump(c);
+    await pump(c);
+
+    left.emitStatus(const DeviceStatusPacket(uncalibrated: false));
+    for (var i = 0; i < 25; i++) {
+      left.emitTelemetry(fistFrame(i)); // model confidence ~0.9999 < 1.0
+      await pump(c);
+    }
+
+    final recog = c.read(recognitionControllerProvider);
+    expect(recog.rawLabel, 'A'); // raw shown in debug...
+    expect(recog.lastEmittedLabel, isNull); // ...but never emitted
+    expect(c.read(transcriptControllerProvider).entries, isEmpty);
+  });
+
+  test('C4: the REST class counts as a release and is never emitted',
+      () async {
+    final (c, left, _, _, _, _) = makeContainer(bundle: testBundle());
+    c.read(transcriptControllerProvider);
+    await pump(c);
+    await pump(c);
+
+    left.emitStatus(const DeviceStatusPacket(uncalibrated: false));
+    for (var i = 0; i < 25; i++) {
+      left.emitTelemetry(TelemetryPacket(
+        hand: GloveHand.left,
+        seq: i,
+        angles: const [10, 45, 10, 10, 10], // relaxed pose -> _rest
+        rollDeg: 0,
+        pitchDeg: 0,
+        yawDeg: 0,
+        rawAdc: const [100, 200, 300, 400, 500],
+        calibrationId: 3,
+        quality: 0x1F,
+        receivedAt: DateTime.now(),
+      ));
+      await pump(c);
+    }
+
+    expect(c.read(recognitionControllerProvider).rawLabel, '_rest');
+    expect(c.read(recognitionControllerProvider).lastEmittedLabel, isNull);
+    expect(c.read(transcriptControllerProvider).entries, isEmpty);
+  });
+
+  test('C4: a model trained for the other hand falls back to the '
+      'threshold rules', () async {
+    final (c, left, _, _, _, _) =
+        makeContainer(bundle: testBundle(hand: 'R'));
+    await pump(c);
+    await pump(c);
+
+    left.emitStatus(const DeviceStatusPacket(uncalibrated: false));
+    for (var i = 0; i < 10; i++) {
+      left.emitTelemetry(fistFrame(i));
+      await pump(c);
+    }
+
+    final recog = c.read(recognitionControllerProvider);
+    expect(recog.classifier, 'phone-threshold');
+    expect(recog.modelVersion, 'stand-in-v1');
   });
 }

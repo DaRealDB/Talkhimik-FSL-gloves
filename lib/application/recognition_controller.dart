@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/glove/glove_connection.dart';
+import '../domain/classifier/classifier_factory.dart';
 import '../domain/classifier/gesture_classifier.dart';
 import '../domain/classifier/hand_frame.dart';
+import '../domain/classifier/model_bundle.dart';
 import '../domain/classifier/recognition_constants.dart';
 import '../domain/classifier/refuse_gate.dart';
 import '../domain/classifier/stabilizer.dart';
@@ -34,6 +36,7 @@ class RecognitionState {
     this.activeHand,
     this.classifier = '',
     this.modelVersion = '',
+    this.modelTrainedOn,
     this.rawClass,
     this.rawLabel,
     this.rawConfidence,
@@ -62,6 +65,10 @@ class RecognitionState {
 
   final String modelVersion;
 
+  /// One-line trained-on summary from labels.json (C4); null for the
+  /// stand-in or when no model shipped.
+  final String? modelTrainedOn;
+
   /// Last raw class/letter/confidence BEFORE stabilization.
   final String? rawClass;
   final String? rawLabel;
@@ -88,6 +95,7 @@ class RecognitionState {
     GloveHand? activeHand,
     String? classifier,
     String? modelVersion,
+    String? modelTrainedOn,
     String? rawClass,
     String? rawLabel,
     double? rawConfidence,
@@ -104,6 +112,7 @@ class RecognitionState {
         activeHand: activeHand ?? this.activeHand,
         classifier: classifier ?? this.classifier,
         modelVersion: modelVersion ?? this.modelVersion,
+        modelTrainedOn: modelTrainedOn ?? this.modelTrainedOn,
         rawClass: rawClass ?? this.rawClass,
         rawLabel: rawLabel ?? this.rawLabel,
         rawConfidence: rawConfidence ?? this.rawConfidence,
@@ -122,8 +131,9 @@ class RecognitionState {
 /// either glove pause it: the glove takes precedence.
 class RecognitionController extends Notifier<RecognitionState> {
   final List<StreamSubscription<Object?>> _subs = [];
-  final GestureClassifier _classifier = const ThresholdClassifier();
   final Stabilizer _stabilizer = Stabilizer();
+  final ClassifierFactory _factory = const ClassifierFactory();
+  final Map<GloveHand, (ModelBundle?, GestureClassifier)> _classifiers = {};
   Map<String, int> _wordIdByLetter = const {};
   bool _userEnabled = true; // Developer toggle, default ON
 
@@ -197,12 +207,15 @@ class RecognitionController extends Notifier<RecognitionState> {
     final hand = _resolveHand(live);
     final handState = hand == null ? null : live.forHand(hand);
     final telemetry = handState?.telemetry;
+    final bundle = ref.read(modelBundleProvider).value;
+    final classifier = _classifierFor(hand, bundle);
 
     state = state.copyWith(
       enabled: true,
       activeHand: hand,
-      classifier: RecognitionConstants.thresholdSource,
-      modelVersion: RecognitionConstants.thresholdModelVersion,
+      classifier: classifier.source,
+      modelVersion: classifier.modelVersion,
+      modelTrainedOn: bundle?.labels.trainedOnSummary,
     );
     if (telemetry == null) {
       if (hand == null) _stabilizer.reset();
@@ -237,12 +250,25 @@ class RecognitionController extends Notifier<RecognitionState> {
       return;
     }
 
-    final prediction = _classifier.classifyFrame(frame);
-    final result = _stabilizer.addFrame(prediction?.label, now);
+    final prediction = classifier.classifyFrame(frame);
+    // Trained-model semantics: below the confidence floor or the REST
+    // class counts as neutral (a release), never an emission (concept
+    // C5). The stand-in has no floor/REST and never reaches here with a
+    // null prediction anyway.
+    String? stabilizerLabel;
+    if (prediction != null) {
+      final floor = classifier.confidenceFloor;
+      final rest = classifier.restLabel;
+      final belowFloor = floor != null && prediction.confidence < floor;
+      final isRest = rest != null && prediction.label == rest;
+      stabilizerLabel = (belowFloor || isRest) ? null : prediction.label;
+    }
+    final result = _stabilizer.addFrame(stabilizerLabel, now);
     state = state.copyWith(
       rawClass: prediction?.className,
       rawLabel: prediction?.label,
       rawConfidence: prediction?.confidence,
+      top3: prediction?.top3 ?? const [],
       voteCount: result.voteCount,
       blockedReason: result.neutralReleased && result.majorityLabel == null
           ? 'released'
@@ -261,10 +287,22 @@ class RecognitionController extends Notifier<RecognitionState> {
           confidence: confidence,
           gloveTimestampMs: now.millisecondsSinceEpoch,
           receivedAt: now,
-          source: RecognitionConstants.thresholdSource,
-          modelVersion: RecognitionConstants.thresholdModelVersion,
+          source: classifier.source,
+          modelVersion: classifier.modelVersion,
         ));
     state = state.copyWith(lastEmittedLabel: emitLabel);
+  }
+
+  /// The classifier for the signing hand, cached until the model bundle
+  /// or the hand changes. A bundle for the wrong hand falls back to the
+  /// threshold rules (ClassifierFactory).
+  GestureClassifier _classifierFor(GloveHand? hand, ModelBundle? bundle) {
+    if (hand == null) return const ThresholdClassifier();
+    final cached = _classifiers[hand];
+    if (cached != null && identical(cached.$1, bundle)) return cached.$2;
+    final classifier = _factory.create(bundle, hand);
+    _classifiers[hand] = (bundle, classifier);
+    return classifier;
   }
 
   /// Signing hand per the preference: manual hands are used as chosen;
