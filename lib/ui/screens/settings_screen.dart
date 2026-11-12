@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
+import '../../core/strings/app_strings.dart';
 import '../../data/glove/mock_glove_connection.dart';
 import '../widgets/ble_diagnostics_panel.dart';
 import '../widgets/header_band.dart';
+import '../widgets/recognition_debug_panel.dart';
 
 /// FR-15 (language, voice, rate, large text), FR-13 (anonymized participant
 /// profile with consent), and dev demo options.
@@ -107,6 +109,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onChanged: (v) => transcriptController.setLargeText(v),
           ),
           const SizedBox(height: 16),
+          _section(context, AppStrings.recognitionSection),
+          ListTile(
+            title: const Text(AppStrings.recognitionSigningHand),
+            subtitle: const Text(AppStrings.recognitionSigningHandSubtitle),
+          ),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(
+                  value: 'auto', label: Text(AppStrings.signingHandAuto)),
+              ButtonSegment(
+                  value: 'left', label: Text(AppStrings.signingHandLeft)),
+              ButtonSegment(
+                  value: 'right', label: Text(AppStrings.signingHandRight)),
+            ],
+            selected: {participant.signingHand},
+            onSelectionChanged: (selection) =>
+                settingsController.setSigningHand(selection.first),
+          ),
+          const SizedBox(height: 16),
           _section(context, 'Participant profile (anonymized)'),
           TextField(
             key: const Key('participant-id-field'),
@@ -165,6 +186,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onChanged: (v) => settingsController.setDemoScenario(v),
                 ),
               ),
+              SwitchListTile(
+                title: const Text(AppStrings.phoneRecognitionToggle),
+                subtitle:
+                    const Text(AppStrings.phoneRecognitionToggleSubtitle),
+                value: participant.phoneRecognitionEnabled,
+                onChanged: (v) =>
+                    settingsController.setPhoneRecognitionEnabled(v),
+              ),
+              const RecognitionDebugPanel(),
               // Live link diagnostics (fix B1) — works with mock values too.
               const BleDiagnosticsPanel(),
             ],

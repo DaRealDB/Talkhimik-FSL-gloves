@@ -21,6 +21,8 @@ class GestureResultPacket {
     required this.gloveTimestampMs,
     required this.receivedAt,
     this.alternatives = const [],
+    this.source,
+    this.modelVersion,
   });
 
   /// Vocabulary ID; the app maps it to Filipino/English text (FR-1).
@@ -38,6 +40,15 @@ class GestureResultPacket {
   /// Top-3 alternative predictions for FR-5. Empty for the real glove v1;
   /// the mock supplies them and the vocabulary repository has a fallback.
   final List<AlternativePrediction> alternatives;
+
+  /// Provenance override for phone-side recognition ('phone-threshold',
+  /// 'phone-tflite'); null for glove/mock packets, where the transcript
+  /// derives source from the connection kind.
+  final String? source;
+
+  /// Model version that produced this event (truthful FR-10 export);
+  /// null = no model (glove packets, mock).
+  final String? modelVersion;
 
   /// End-to-end latency estimate (NFR-1 target: ≤ 500 ms).
   ///

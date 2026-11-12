@@ -88,8 +88,8 @@ class AppStrings {
   // Transcript (FR-1, FR-3)
   static const transcriptHeader = 'Transcript';
   static const emptyTranscript =
-      'Sign a letter or phrase to begin.\n\nRecognized gestures appear here '
-      'as text and speech.';
+      'Sign a letter and hold it steady for a moment.\n\n'
+      'Recognized signs appear here as text and speech.';
   static const clearTranscript = 'Clear transcript';
 
   // Reply panel (FR-7)
@@ -137,4 +137,38 @@ class AppStrings {
   static const datasetDropped = 'dropped';
   static const recordStart = 'Start recording';
   static const recordAbort = 'Abort';
+
+  // Phone-side recognition (C1)
+  static const recognitionSection = 'Recognition';
+  static const recognitionSigningHand = 'Signing hand';
+  static const recognitionSigningHandSubtitle =
+      'Which glove the phone reads signs from.';
+  static const signingHandAuto = 'Auto';
+  static const signingHandLeft = 'Left';
+  static const signingHandRight = 'Right';
+  static const phoneRecognitionToggle = 'Phone recognition';
+  static const phoneRecognitionToggleSubtitle =
+      'Recognize signs on the phone until the glove sends its own results.';
+  static const recogDebugTitle = 'Recognition debug';
+  static const recogDebugStandInNote =
+      'Stand-in rules — replaced by the trained model later.';
+  static const recogDebugClassifier = 'Classifier';
+  static const recogDebugModelVersion = 'Model version';
+  static const recogDebugActiveHand = 'Hand';
+  static const recogDebugRawClass = 'Raw class';
+  static const recogDebugRawLabel = 'Raw letter';
+  static const recogDebugConfidence = 'Confidence';
+  static const recogDebugTop3 = 'Top 3';
+  static const recogDebugVotes = 'Votes';
+  static const recogDebugGate = 'Blocked by';
+  static const recogDebugLastEmitted = 'Last emitted';
+  static const recogDebugInactive =
+      'Recognition is off (mock mode or developer toggle).';
+  static const recogDebugPaused =
+      'Paused — the glove is sending its own results.';
+  static const recogDebugNoHand = 'No signing hand connected.';
+  static const gateUncalibrated = 'uncalibrated';
+  static const gateStale = 'stale';
+  static const gateInvalidFinger = 'invalid finger';
+  static const gateReleased = 'released';
 }

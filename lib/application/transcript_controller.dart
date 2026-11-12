@@ -48,15 +48,26 @@ class TranscriptState {
 
 /// The core loop: gesture → decode → bubble → TTS → log (SRS end-to-end
 /// data flow steps 5–7).
+///
+/// Two producers feed ONE path: the glove connection's label packets and
+/// the phone-side recognizer's event bus (C1). Both emit
+/// [GestureResultPacket]; label packets take precedence because the
+/// recognizer pauses itself when one arrives.
 class TranscriptController extends Notifier<TranscriptState> {
   StreamSubscription<GestureResultPacket>? _gestureSub;
+  StreamSubscription<GestureResultPacket>? _recognitionSub;
   int _nextEntryId = 1;
 
   @override
   TranscriptState build() {
     final connection = ref.read(gloveConnectionProvider);
     _gestureSub = connection.gestureResults.listen(_onGesture);
-    ref.onDispose(() => _gestureSub?.cancel());
+    _recognitionSub =
+        ref.read(recognitionEventBusProvider).stream.listen(_onGesture);
+    ref.onDispose(() {
+      unawaited(_gestureSub?.cancel());
+      unawaited(_recognitionSub?.cancel());
+    });
     _loadSettings();
     return const TranscriptState();
   }
@@ -98,7 +109,9 @@ class TranscriptController extends Notifier<TranscriptState> {
       confidence: packet.confidence,
       confidenceLevel: level,
       alternatives: packet.alternatives,
-      source: ref.read(gloveIsMockProvider) ? 'mock' : 'glove',
+      // Phone-side events carry their own provenance; glove packets derive
+      // it from the connection kind as before.
+      source: packet.source ?? (ref.read(gloveIsMockProvider) ? 'mock' : 'glove'),
     );
     state = state.copyWith(entries: [...state.entries, transcriptEntry]);
 
@@ -120,6 +133,7 @@ class TranscriptController extends Notifier<TranscriptState> {
       receivedAt: packet.receivedAt,
       source: transcriptEntry.source,
       appVersion: ref.read(appVersionProvider),
+      modelVersion: packet.modelVersion ?? 'n/a',
     );
     // Fire-and-forget: logging must never block the recognition loop.
     unawaited(ref.read(logStoreProvider).appendEvent(logEntry).then<void>(

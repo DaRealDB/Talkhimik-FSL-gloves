@@ -16,6 +16,8 @@ class InMemorySettingsService implements SettingsService {
   DateTime? _consentAt;
   bool _forceMock = false;
   String? _demoScenario;
+  String _signingHand = 'auto';
+  bool _phoneRecognitionEnabled = true;
 
   @override
   Future<String> outputLanguage() async => language;
@@ -57,4 +59,13 @@ class InMemorySettingsService implements SettingsService {
   Future<String?> demoScenario() async => _demoScenario;
   @override
   Future<void> setDemoScenario(String? value) async => _demoScenario = value;
+  @override
+  Future<String> signingHand() async => _signingHand;
+  @override
+  Future<void> setSigningHand(String value) async => _signingHand = value;
+  @override
+  Future<bool> phoneRecognitionEnabled() async => _phoneRecognitionEnabled;
+  @override
+  Future<void> setPhoneRecognitionEnabled(bool value) async =>
+      _phoneRecognitionEnabled = value;
 }

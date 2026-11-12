@@ -15,6 +15,8 @@ class SettingsState {
     this.isMinor = false,
     this.forceMock = false,
     this.demoScenario,
+    this.signingHand = 'auto',
+    this.phoneRecognitionEnabled = true,
     this.loaded = false,
   });
 
@@ -24,6 +26,13 @@ class SettingsState {
   final bool isMinor;
   final bool forceMock;
   final String? demoScenario;
+
+  /// 'auto' | 'left' | 'right' — which glove the phone recognizer reads.
+  final String signingHand;
+
+  /// Developer toggle: phone-side recognition (default ON).
+  final bool phoneRecognitionEnabled;
+
   final bool loaded;
 
   SettingsState copyWith({
@@ -33,6 +42,8 @@ class SettingsState {
     bool? isMinor,
     bool? forceMock,
     String? demoScenario,
+    String? signingHand,
+    bool? phoneRecognitionEnabled,
     bool? loaded,
   }) =>
       SettingsState(
@@ -42,6 +53,9 @@ class SettingsState {
         isMinor: isMinor ?? this.isMinor,
         forceMock: forceMock ?? this.forceMock,
         demoScenario: demoScenario ?? this.demoScenario,
+        signingHand: signingHand ?? this.signingHand,
+        phoneRecognitionEnabled:
+            phoneRecognitionEnabled ?? this.phoneRecognitionEnabled,
         loaded: loaded ?? this.loaded,
       );
 }
@@ -59,6 +73,8 @@ class SettingsController extends Notifier<SettingsState> {
       consentDate: await settings.consentDate(),
       forceMock: await settings.forceMock(),
       demoScenario: await settings.demoScenario(),
+      signingHand: await settings.signingHand(),
+      phoneRecognitionEnabled: await settings.phoneRecognitionEnabled(),
       loaded: true,
     );
   }
@@ -94,6 +110,18 @@ class SettingsController extends Notifier<SettingsState> {
   Future<void> setDemoScenario(String? value) async {
     await ref.read(settingsServiceProvider).setDemoScenario(value);
     state = state.copyWith(demoScenario: value);
+  }
+
+  Future<void> setSigningHand(String value) async {
+    await ref.read(settingsServiceProvider).setSigningHand(value);
+    state = state.copyWith(signingHand: value);
+  }
+
+  Future<void> setPhoneRecognitionEnabled(bool value) async {
+    await ref
+        .read(settingsServiceProvider)
+        .setPhoneRecognitionEnabled(value);
+    state = state.copyWith(phoneRecognitionEnabled: value);
   }
 }
 

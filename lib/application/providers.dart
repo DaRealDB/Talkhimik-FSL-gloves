@@ -22,6 +22,7 @@ import 'dataset_recorder_controller.dart';
 import 'export_controller.dart';
 import 'glove_controller.dart';
 import 'live_controller.dart';
+import 'recognition_controller.dart';
 import 'settings_controller.dart';
 import 'transcript_controller.dart';
 import 'tts_controller.dart';
@@ -99,6 +100,16 @@ final bleDiagnosticsProvider =
 /// Both gloves' live snapshots for the /live screen (master §6.1).
 final liveControllerProvider =
     NotifierProvider<LiveController, LiveState>(LiveController.new);
+
+/// Phone-side recognizer (C1): gate → classifier → stabilizer → events.
+final recognitionControllerProvider =
+    NotifierProvider<RecognitionController, RecognitionState>(
+        RecognitionController.new);
+
+/// The recognizer's event bus — the transcript consumes this alongside the
+/// glove connection's own [GloveConnection.gestureResults] stream.
+final recognitionEventBusProvider =
+    Provider<RecognitionEventBus>((ref) => RecognitionEventBus());
 
 final appVersionProvider = Provider<String>((ref) => kAppVersion);
 

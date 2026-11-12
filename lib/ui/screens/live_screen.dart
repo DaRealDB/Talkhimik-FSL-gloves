@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +16,7 @@ import '../widgets/diagonal_slab.dart';
 import '../widgets/finger_ticker_card.dart';
 import '../widgets/hand_view.dart';
 import '../widgets/imu_tiles.dart';
+import '../widgets/recognition_debug_panel.dart';
 
 /// Live per-hand telemetry view (master §6.1): animated hands, angle bars,
 /// raw ADC + Ω details, IMU tiles, health badges, zero-yaw/vibrate, and the
@@ -53,8 +55,11 @@ class _LiveScreenState extends ConsumerState<LiveScreen>
     final live = ref.watch(liveControllerProvider);
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.liveTitle)),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
+      body: Column(
+        children: [
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
           final wide = constraints.maxWidth >= 700;
           if (wide) {
             return Row(
@@ -86,7 +91,15 @@ class _LiveScreenState extends ConsumerState<LiveScreen>
               ],
             ),
           );
-        },
+              },
+            ),
+          ),
+          if (kDebugMode)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: RecognitionDebugPanel(),
+            ),
+        ],
       ),
     );
   }

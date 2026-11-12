@@ -36,6 +36,16 @@ abstract interface class SettingsService {
   /// Dev flag: mock scenario to auto-run at startup, if any.
   Future<String?> demoScenario();
   Future<void> setDemoScenario(String? value);
+
+  /// Which glove the phone recognizer reads: 'auto' (default), 'left', or
+  /// 'right'. Auto = the only connected glove, else Right.
+  Future<String> signingHand();
+  Future<void> setSigningHand(String value);
+
+  /// Developer toggle for phone-side recognition (default ON for real
+  /// gloves; forced OFF while the mock drives the transcript).
+  Future<bool> phoneRecognitionEnabled();
+  Future<void> setPhoneRecognitionEnabled(bool value);
 }
 
 /// shared_preferences implementation (Windows/web/Android all supported).
@@ -55,6 +65,8 @@ class SharedPrefsSettingsService implements SettingsService {
   static const _kConsentDate = 'settings.consentDate';
   static const _kForceMock = 'settings.forceMock';
   static const _kDemoScenario = 'settings.demoScenario';
+  static const _kSigningHand = 'settings.signingHand';
+  static const _kPhoneRecognitionEnabled = 'settings.phoneRecognitionEnabled';
 
   @override
   Future<String> outputLanguage() async =>
@@ -134,4 +146,20 @@ class SharedPrefsSettingsService implements SettingsService {
   @override
   Future<void> setDemoScenario(String? value) =>
       value == null ? _prefs.remove(_kDemoScenario) : _prefs.setString(_kDemoScenario, value);
+
+  @override
+  Future<String> signingHand() async =>
+      await _prefs.getString(_kSigningHand) ?? 'auto';
+
+  @override
+  Future<void> setSigningHand(String value) =>
+      _prefs.setString(_kSigningHand, value);
+
+  @override
+  Future<bool> phoneRecognitionEnabled() async =>
+      await _prefs.getBool(_kPhoneRecognitionEnabled) ?? true;
+
+  @override
+  Future<void> setPhoneRecognitionEnabled(bool value) =>
+      _prefs.setBool(_kPhoneRecognitionEnabled, value);
 }
