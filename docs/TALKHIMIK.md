@@ -18,8 +18,10 @@
 
 **Current stage:** two Seeed XIAO ESP32S3 BLE gloves (5 flex sensors +
 MPU-6050/6500 each) stream telemetry to the app over BLE; the app renders
-two animated hands, drives the firmware calibration wizard, and records
-calibration-aware datasets (CSV + sidecar). On-glove TFLM label packets are
+two animated hands, drives the firmware calibration wizard, records
+calibration-aware datasets (CSV + sidecar), and recognizes static letters
+ON THE PHONE (§13) — threshold rules today, a trained MLP from
+`assets/models/` when one ships (§15). On-glove TFLM label packets remain
 the next firmware stage (planned).
 
 ---
@@ -93,8 +95,9 @@ Reject frames ≠ 29 bytes.
 
 7 bytes: word_id u16 + confidence u8 + timestamp_ms u32 (SRS Table III-2).
 `GesturePacketCodec` + test are in place; the mock drives the transcript
-through it. Until the firmware sends labels (or the optional phone-side
-classifier lands), the transcript works only with the mock glove.
+through it. The phone-side recognizer (§13) drives the transcript today
+and PAUSES itself the moment a real label packet arrives (glove takes
+precedence, both paths feed the same transcript events).
 
 ---
 
@@ -252,7 +255,8 @@ seq-gap loss, trailing-second update rate, mismatch flag):
   `sessions`. Participant id/consent live in shared_preferences only.
 - **shared_preferences**: language/rate/voice/mute, large text,
   participantId, consentGiven/Date, forceMock + demoScenario (in the
-  Settings "Developer" section), calinfo.L/R.
+  Settings "Developer" section), signing hand + phone-recognition toggle
+  (Settings → Recognition / Developer, §13), calinfo.L/R.
 - **Mock glove** (dev/demo/test): transcript scenarios (alphabet sweep,
   mixed confidence, random disconnect), animated telemetry, wizard with
   forced errors 3/4, loss bursts every 7 s, per hand.
@@ -261,7 +265,7 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 
 ## 8. Testing
 
-155 tests, `flutter analyze` clean, per-phase commits.
+238 tests, `flutter analyze` clean, per-phase commits.
 
 - **Unit**: sensor-math golden vectors + seqGap wrap · codecs vs §1 ·
   wizard step/error/completion · recorder rules (cal change, cal 0 gate,
@@ -303,8 +307,11 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 
 ### Open items
 
-- Production label packet (planned §1) — transcript from the real glove
-  needs it or the optional phone-side classifier.
+- Production label packet (planned §1) — the firmware stage that replaces
+  phone-side recognition; the app already handles both paths.
+- TFLite engine on the phone — the trained model currently runs as a
+  pure-Dart MLP (§15); `assets/models/talkhimik_letters.tflite` +
+  a TFLite engine behind `GestureClassifier` are the upgrade path.
 - Hardware verification on the realme phone with real gloves.
 
 ---
@@ -387,3 +394,93 @@ placeholder).
 | Serial-position | primary action in the thumb zone, secondary at the bottom edge |
 | Recognition over recall | every icon has a label or tooltip; custom-painted widgets get Semantics labels |
 | Accessibility | AA everywhere, non-color state cues, reduce-motion zeroing, large text verified at 1.0/1.3/2.0 × on 360 dp (all screens) |
+
+---
+
+## 13. Phone-side recognition (C1 + C4)
+
+The recognizer turns real-glove telemetry into transcript events through
+the SAME path the (planned) glove label packets use — one bubble, one TTS
+speak, one Hive log row, one source of truth.
+
+```
+telemetry (20 Hz) ── signing hand (Settings → Recognition)
+   → RefuseGate (cal_id 0 / uncalibrated / stale >500 ms / invalid finger)
+   → classifier (ThresholdClassifier | DartMlpClassifier)
+   → stabilizer (20-frame majority, release + min-gap rules)
+   → RecognitionEventBus ──→ transcript bubble + TTS + Hive log
+```
+
+- **Gates (never guess, concept C5):** `RefuseGate` refuses uncalibrated
+  gloves (cal_id 0 or STATUS bit0), frames older than 500 ms, and frames
+  with an invalid finger in the quality byte. Reasons surface in the
+  debug panel.
+- **Stand-in classifier (C1):** 10 angle rules in ONE const table
+  (`lib/domain/classifier/threshold_classifier.dart`), each mapped to a
+  representative letter (A·B·F·D·V·U·W·I·Y·C). Merged classes are never
+  presented as certain: confidence capped at 0.55. Rules are first-match
+  in table order.
+- **Trained model (C4):** `assets/models/weights.json` + `labels.json`
+  run as a pure-Dart MLP (in → 32 → 32 → softmax; normalization baked
+  into layer 1, so the phone passes raw degrees). Source
+  `phone-tflite`, model version `mlp-<dataset_hash8>`. Below the
+  labels.json confidence floor or on the `_rest` class nothing is
+  emitted (it counts as a release). No model present / wrong hand /
+  corrupt files → the threshold rules take over (`ClassifierFactory`).
+- **Stabilizer constants** (`lib/domain/classifier/stabilizer.dart`):
+  window 20 frames @ 20 Hz, majority ≥ 10 votes, release = neutral for
+  ≥ 400 ms, min 400 ms between emissions; the same letter twice requires
+  a release between; stale/disconnect resets the window. NFR-1 ≤ 500 ms
+  is measured from the emission decision; the ~0.5 s hold-to-confirm is
+  a documented trade-off.
+- **Signing hand:** Settings → Recognition → Signing hand (Auto = the
+  only connected glove, else Right / Left / Right). Developer toggle
+  "Phone recognition" (default ON for real gloves; forced OFF in mock
+  mode — the mock drives its own transcript).
+- **Precedence:** a real glove label packet pauses phone recognition
+  until the next disconnect.
+- **Debug panel** (Settings → Developer, and Live in debug builds):
+  classifier, model version, trained-on summary, hand, raw class/letter/
+  confidence, top-3, votes, gate reason, last emission — the tool for
+  diagnosing "nothing appears".
+
+## 14. Dataset coverage (C2)
+
+- `talkhimik_dataset/index.json` is a derived cache (per label: takes,
+  rows, hands, calibration ids, signers), rebuilt from the session CSVs
+  when missing/corrupt and updated at take stop / session changes. The
+  CSV/sidecar formats are untouched.
+- The Collect screen shows a coverage card: a chip grid of 28 letters +
+  REST with take counts and icon states — <5 takes "needs data",
+  5–9 "ok", ≥10 "good"; J and Z are marked "later" (dynamic letters).
+  Constants live in `lib/data/dataset/coverage_index.dart`. Tapping a
+  chip preselects that label for recording.
+- REST is a first-class take: picker item "REST — hand relaxed", stored
+  as label `_rest`.
+- "Share all for training" exports every CSV + sidecar + the coverage
+  index through the share sheet (multi-file, no zip).
+
+## 15. Training pipeline (`ml/`, C3) — how to ship a new model
+
+```
+1. collect    Collect screen → record takes (10+ per letter, REST too)
+2. export     Collect → "Share all for training" → save the folder
+3. train      ml/.venv: python train.py <folder> --out out
+              (pip install -r requirements.txt; + tensorflow for .tflite)
+4. install    copy out/weights.json + out/labels.json (+ .tflite) into
+              assets/models/ and rebuild the app
+5. test       Home with the real glove: debug panel shows
+              phone-tflite + the model version
+```
+
+Pipeline facts: validation and every drop decision are reported
+(missing sidecar, cal mismatch, invalid-finger sessions, bad-quality
+rows, <5-take labels, J/Z skipped); splits are grouped by SESSION
+(~70/15/15, per-label coverage — never random rows) with
+leave-one-signer-out when ≥ 2 signers (one signer → the report says
+cross-person generalization is untested); two input variants are
+compared (A = angles, B = angles + roll/pitch; yaw never used); outputs:
+report.md, MODEL_CARD.md, confusion matrix CSV/PNG, weights.json,
+labels.json (hand, input spec, class→word_id map, confidence floor,
+trained-on summary, metrics), and .tflite when TensorFlow is installed.
+`python test_pipeline.py` verifies the whole pipeline on synthetic data.
