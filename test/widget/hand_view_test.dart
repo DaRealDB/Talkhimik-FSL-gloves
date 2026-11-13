@@ -15,6 +15,20 @@ HandPose pose({GloveHand hand = GloveHand.right, int invalidMask = 0}) =>
     );
 
 void main() {
+  test('roll/yaw lerp takes the short way across ±180°', () {
+    expect(angleDelta(179, -179), closeTo(2, 1e-9));
+    expect(angleDelta(-179, 179), closeTo(-2, 1e-9));
+    expect(wrap180(181), closeTo(-179, 1e-9));
+    expect(wrap180(-180), 180);
+    final from = HandPose(fingerDeg: const [0, 0, 0, 0, 0], rollDeg: 179,
+        yawDeg: -179, handedness: GloveHand.right);
+    final to = HandPose(fingerDeg: const [0, 0, 0, 0, 0], rollDeg: -179,
+        yawDeg: 179, handedness: GloveHand.right);
+    final mid = from.lerpTo(to, 0.5);
+    expect(mid.rollDeg.abs(), closeTo(180, 1e-9)); // not 0
+    expect(mid.yawDeg.abs(), closeTo(180, 1e-9));
+  });
+
   Widget wrap(Widget child) => MaterialApp(
         theme: buildLightTheme(),
         home: Scaffold(body: child),

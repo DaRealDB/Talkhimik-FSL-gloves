@@ -38,12 +38,22 @@ class HandPose {
           for (var i = 0; i < fingerDeg.length; i++)
             fingerDeg[i] + (target.fingerDeg[i] - fingerDeg[i]) * t,
         ],
-        rollDeg: rollDeg + (target.rollDeg - rollDeg) * t,
+        // Roll and yaw wrap at ±180° (fw 1.3.0): take the short way round.
+        rollDeg: wrap180(rollDeg + angleDelta(rollDeg, target.rollDeg) * t),
         pitchDeg: pitchDeg + (target.pitchDeg - pitchDeg) * t,
-        yawDeg: yawDeg + (target.yawDeg - yawDeg) * t,
+        yawDeg: wrap180(yawDeg + angleDelta(yawDeg, target.yawDeg) * t),
         handedness: handedness,
         invalidMask: target.invalidMask,
       );
+}
+
+/// Shortest signed angle from [from] to [to], in (−180, 180].
+double angleDelta(double from, double to) => -wrap180(from - to);
+
+/// Wraps degrees into (−180, 180].
+double wrap180(double deg) {
+  final d = deg % 360; // Dart % is non-negative for a positive divisor
+  return d > 180 ? d - 360 : d;
 }
 
 /// One hand's full Live panel (design refresh): olive-lime header band with
@@ -115,8 +125,8 @@ class _HandViewState extends State<HandView>
         return false;
       }
     }
-    return (_current.yawDeg - widget.target.yawDeg).abs() < 0.05 &&
-        (_current.rollDeg - widget.target.rollDeg).abs() < 0.05 &&
+    return angleDelta(_current.yawDeg, widget.target.yawDeg).abs() < 0.05 &&
+        angleDelta(_current.rollDeg, widget.target.rollDeg).abs() < 0.05 &&
         (_current.pitchDeg - widget.target.pitchDeg).abs() < 0.05;
   }
 
