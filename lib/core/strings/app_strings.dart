@@ -111,6 +111,40 @@ class AppStrings {
   static const calibrationWiringWarning = 'Check the wiring on this finger.';
   static const calibrationUnknownCommand = 'The glove did not understand '
       'that command.';
+  // Motion sensor (IMU mount) setup — fw 1.3.0
+  static const mountTitle = 'Motion sensor setup';
+  static const mountIntro = 'Teach the glove how its motion sensor sits on '
+      'your hand. Each step takes about 2 seconds — keep the glove still.';
+  static const mountRestartNote = 'Changed which hand this glove is set to? '
+      'Turn the glove off and on first, or the setup is saved for the '
+      'wrong hand.';
+  static const mountGyroButton = 'Check stillness sensor';
+  static const mountGyroHint = 'Rest the glove on a table.';
+  static const mountPose1Button = 'Pose 1';
+  static const mountPose1Hint = 'Palm down, back of hand up, fingers '
+      'pointing forward, level.';
+  static const mountPose2Button = 'Pose 2';
+  static const mountPose2Hint = 'Point your fingers straight up.';
+  static const mountWorking = 'Hold still…';
+  static const mountPose1Ok = 'Pose 1 done. Now do Pose 2.';
+  static const mountSaved = 'Motion sensor setup saved.';
+  static const mountGyroOk = 'Stillness sensor checked.';
+  static const mountNoReply = 'The glove did not answer. Try again.';
+  static const mountNeedsNewFirmware =
+      'This glove needs a firmware update for motion sensor setup.';
+  static const mountSensorNotResponding =
+      "The glove's motion sensor is not responding. Check its wiring.";
+  static const mountHoldStill =
+      'The glove moved. Hold it still and try again.';
+  static const mountNotPerpendicular =
+      'Point your fingers straight up and redo Pose 2.';
+  static const mountPose1First = 'Do Pose 1 first.';
+  static const mountGyroMoving =
+      'The glove moved. Rest it on a table and try again.';
+  static const mountStatusDone = 'Set up';
+  static const mountStatusDefault = 'Not set up — using the default';
+  static const mountConnectFirst = 'Connect this glove first.';
+
   static String calibrationFlatPrompt(String finger) =>
       'Hold your $finger flat';
   static String calibrationBendPrompt(String finger) =>

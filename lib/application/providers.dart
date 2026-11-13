@@ -26,6 +26,7 @@ import 'dataset_recorder_controller.dart';
 import 'export_controller.dart';
 import 'glove_controller.dart';
 import 'live_controller.dart';
+import 'mount_calibration_controller.dart';
 import 'recognition_controller.dart';
 import 'settings_controller.dart';
 import 'transcript_controller.dart';
@@ -177,6 +178,10 @@ final coverageControllerProvider =
 final datasetRecorderControllerProvider =
     NotifierProvider<DatasetRecorderController, RecorderState>(
         DatasetRecorderController.new);
+
+final mountCalibrationControllerProvider =
+    NotifierProvider<MountCalibrationController, MountCalibrationState>(
+        MountCalibrationController.new);
 
 final exportControllerProvider =
     NotifierProvider<ExportController, ExportState>(ExportController.new);

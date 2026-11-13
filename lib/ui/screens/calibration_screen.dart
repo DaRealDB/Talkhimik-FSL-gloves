@@ -9,6 +9,7 @@ import '../../application/providers.dart';
 import '../../core/strings/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/motion.dart';
+import '../../data/glove/glove_connection.dart';
 import '../../domain/models/calibration_table.dart';
 import '../../domain/models/telemetry_packet.dart';
 import '../widgets/anim.dart';
@@ -94,7 +95,115 @@ class _Idle extends ConsumerWidget {
             child: Text(AppStrings.calibrationNoProfile,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
           ),
+        const SizedBox(height: 24),
+        Text(AppStrings.mountTitle,
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 4),
+        Text(AppStrings.mountIntro,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: scheme.onSurfaceVariant)),
+        const SizedBox(height: 4),
+        Text(AppStrings.mountRestartNote,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant)),
+        const SizedBox(height: 8),
+        for (final hand in const [GloveHand.left, GloveHand.right])
+          _MountCard(hand: hand),
       ],
+    );
+  }
+}
+
+/// fw 1.3.0 motion sensor (IMU mount) setup for one glove: gyro check,
+/// Pose 1, Pose 2. Hidden behind a note on fw 1.2.0 gloves (no mount id).
+class _MountCard extends ConsumerWidget {
+  const _MountCard({required this.hand});
+
+  final GloveHand hand;
+
+  static Key buttonKey(GloveHand hand, AppCommand command) =>
+      Key('mount-${hand.name}-${command.name}');
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(
+        liveControllerProvider.select((l) => l.forHand(hand).status));
+    final mount = ref.watch(mountCalibrationControllerProvider);
+    final mine = mount.hand == hand;
+    final busy = mount.pending != null;
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget step(AppCommand command, String label, String hint) => ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(hint, style: text.bodyMedium),
+          trailing: FilledButton.tonal(
+            key: buttonKey(hand, command),
+            onPressed: busy
+                ? null
+                : () => ref
+                    .read(mountCalibrationControllerProvider.notifier)
+                    .run(hand, command),
+            child: Text(mine && mount.pending == command
+                ? AppStrings.mountWorking
+                : label),
+          ),
+        );
+
+    final List<Widget> body;
+    if (status == null) {
+      body = [Text(AppStrings.mountConnectFirst, style: text.bodyMedium)];
+    } else if (status.mountCalibrationId == null) {
+      body = [Text(AppStrings.mountNeedsNewFirmware, style: text.bodyMedium)];
+    } else {
+      body = [
+        Text(
+            status.mountUncalibrated
+                ? AppStrings.mountStatusDefault
+                : AppStrings.mountStatusDone,
+            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+        step(AppCommand.calibrateGyro, AppStrings.mountGyroButton,
+            AppStrings.mountGyroHint),
+        step(AppCommand.captureMountPose1, AppStrings.mountPose1Button,
+            AppStrings.mountPose1Hint),
+        step(AppCommand.captureMountPose2, AppStrings.mountPose2Button,
+            AppStrings.mountPose2Hint),
+        if (mine && mount.message != null)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: mount.succeeded
+                  ? scheme.secondaryContainer
+                  : scheme.errorContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(mount.message!,
+                style: text.bodyMedium?.copyWith(
+                    color: mount.succeeded
+                        ? scheme.onSecondaryContainer
+                        : scheme.onErrorContainer)),
+          ),
+      ];
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(hand == GloveHand.left
+                ? AppStrings.leftHandTitle
+                : AppStrings.rightHandTitle,
+                style: text.titleSmall),
+            ...body,
+          ],
+        ),
+      ),
     );
   }
 }
