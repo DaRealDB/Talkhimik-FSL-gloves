@@ -160,9 +160,10 @@ class DatasetRecorderController extends Notifier<RecorderState> {
 
     final session = state.active[hand] ??
         await _openSession(hand, frame.calibrationId);
-    // A calibration change closes the session and opens a new file —
-    // files never mix calibrations.
-    if (session.calibrationId != frame.calibrationId) {
+    // A flex or IMU-mount calibration change closes the session and opens
+    // a new file — files never mix calibrations.
+    if (session.calibrationId != frame.calibrationId ||
+        session.mountCalibrationId != _mountIdFor(hand)) {
       await _closeActive(hand);
       await _sampleHand(hand, frame);
       return;
@@ -249,6 +250,7 @@ class DatasetRecorderController extends Notifier<RecorderState> {
           ),
       ],
       startedAt: DateTime.now(),
+      mountCalibrationId: _mountIdFor(hand),
     )
       // Seed the in-flight take (a take can precede the first frame).
       ..takeId = _takeId
@@ -257,6 +259,12 @@ class DatasetRecorderController extends Notifier<RecorderState> {
     state = state.copyWith(active: {...state.active, hand: session});
     return session;
   }
+
+  int? _mountIdFor(GloveHand hand) => ref
+      .read(liveControllerProvider)
+      .forHand(hand)
+      .status
+      ?.mountCalibrationId;
 
   /// Fallback CAL_INFO when the live mirror is empty (should not happen
   /// for a calibrated glove): a benign all-valid, 10 kΩ profile.

@@ -1,7 +1,7 @@
 import 'telemetry_packet.dart';
 
-/// One calibration-aware recording session per (hand, calibration_id)
-/// (master §5.1) — files never mix calibrations.
+/// One calibration-aware recording session per (hand, calibration_id,
+/// mount_calibration_id) (master §5.1) — files never mix calibrations.
 class DatasetSession {
   DatasetSession({
     required this.sessionId,
@@ -13,6 +13,7 @@ class DatasetSession {
     required this.rDiv,
     required this.fingers,
     required this.startedAt,
+    this.mountCalibrationId,
   });
 
   final String sessionId;
@@ -34,6 +35,10 @@ class DatasetSession {
   final List<FingerInfo> fingers;
 
   final DateTime startedAt;
+
+  /// STATUS mount_calibration_id at open (fw 1.3.0+); null for fw 1.2.0
+  /// gloves or before the first STATUS arrived.
+  final int? mountCalibrationId;
 
   int rows = 0;
   int droppedFrames = 0;

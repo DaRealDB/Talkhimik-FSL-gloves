@@ -151,6 +151,10 @@ class DatasetFileWriter {
         'signer_id': session.signerId,
         'hand': session.handTag,
         'calibration_id': session.calibrationId,
+        'mount_calibration_id': session.mountCalibrationId,
+        // Same wording as the web dashboard's sidecar.
+        'roll_note': 'roll wraps at +/-180; use sin/cos(roll) or the '
+            'gravity vector as ML features',
         'sample_rate_hz': 5,
         'firmware_version': session.firmwareVersion,
         'recorded_at': session.startedAt.toIso8601String(),

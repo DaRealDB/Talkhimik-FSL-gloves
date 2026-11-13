@@ -154,6 +154,8 @@ void main() {
     expect(sidecar['signer_id'], 'anon-1234');
     expect(sidecar['hand'], 'L');
     expect(sidecar['calibration_id'], 3);
+    expect(sidecar['mount_calibration_id'], isNull); // fw 1.2.0 session
+    expect(sidecar['roll_note'], contains('sin/cos(roll)'));
     expect(sidecar['sample_rate_hz'], 5);
     expect(sidecar['firmware_version'], '1.2.0');
     expect(sidecar['rows'], 240);

@@ -6,6 +6,7 @@ import 'package:talkhimik_app/application/dataset_recorder_controller.dart';
 import 'package:talkhimik_app/application/providers.dart';
 import 'package:talkhimik_app/core/strings/app_strings.dart';
 import 'package:talkhimik_app/domain/models/cal_info_packet.dart';
+import 'package:talkhimik_app/domain/models/device_status.dart';
 import 'package:talkhimik_app/domain/models/telemetry_packet.dart';
 
 import '../helpers/fake_glove_connection.dart';
@@ -188,6 +189,36 @@ void main() {
     expect(sessions.first.calibrationId, 4);
     expect(sessions.last.calibrationId, 3);
     expect(sessions.last.rows, 1);
+  });
+
+  test('a mount calibration change also opens a new file (fw 1.3.0)',
+      () async {
+    final c = makeContainer();
+    await emitCalInfo(calInfo(3));
+    left.emitStatus(const DeviceStatusPacket(mountCalibrationId: 0));
+    await startRecording(c);
+    final recorder = c.read(datasetRecorderControllerProvider.notifier);
+    await recorder.startTake('A');
+
+    await emit(frame(10, 3));
+    await recorder.sampleNow();
+    // Distinct S-<ms> session ids (same cal id → same name pattern).
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    left.emitStatus(const DeviceStatusPacket(mountCalibrationId: 77));
+    await emit(frame(11, 3));
+    await recorder.sampleNow();
+    await recorder.stop();
+
+    final sessions = c.read(datasetRecorderControllerProvider).sessions;
+    expect(sessions, hasLength(2));
+    final sidecars = [
+      for (final f in dir.listSync().whereType<File>())
+        if (f.path.endsWith('_sidecar.json')) f.readAsStringSync(),
+    ];
+    expect(sidecars.where((s) => s.contains('"mount_calibration_id":77')),
+        hasLength(1));
+    expect(sidecars.where((s) => s.contains('"mount_calibration_id":0')),
+        hasLength(1));
   });
 
   test('rows are only written while a take is active', () async {
