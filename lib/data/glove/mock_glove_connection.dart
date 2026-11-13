@@ -115,6 +115,10 @@ class MockGloveConnection implements GloveConnection {
   int _calStep = 0;
   bool _calibrating = false;
   int? _forcedCalError;
+  // fw 1.3.0 IMU mount emulation (0 = firmware default mount in use).
+  int _mountId = 0;
+  bool _havePose1 = false;
+  int? _forcedImuError;
 
   /// Set by [dispose]; in-flight connect() delays and the telemetry engine
   /// check it so a swapped-out mock never restarts timers (bugfix).
@@ -171,6 +175,13 @@ class MockGloveConnection implements GloveConnection {
   /// on the step) or 4 (resistance fault, advances) — master §4.3 tests.
   void forceCalibrationError(int code) => _forcedCalError = code;
 
+  /// Makes the NEXT mount/gyro command fail with firmware error [code]
+  /// (5–10, config.h StatusError).
+  void forceImuError(int code) => _forcedImuError = code;
+
+  /// The mock's current mount_calibration_id (assertion aid).
+  int get mountCalibrationId => _mountId;
+
   /// The mock's current calibration id (assertion aid).
   int get calibrationId => _calId;
 
@@ -195,8 +206,26 @@ class MockGloveConnection implements GloveConnection {
       case AppCommand.setHand:
       case AppCommand.vibrate:
         break;
+      case AppCommand.captureMountPose1:
+        _lastError = _takeImuError();
+        _havePose1 = _lastError == null;
+      case AppCommand.captureMountPose2:
+        _lastError = _havePose1 ? _takeImuError() : 8; // ERR_MOUNT_SEQUENCE
+        if (_lastError == null) {
+          _mountId = _random.nextInt(0x7FFFFFFF) + 1; // random non-zero
+          _havePose1 = false;
+        }
+      case AppCommand.calibrateGyro:
+        _lastError = _takeImuError();
     }
     _emitStatus();
+  }
+
+  // shortcut: captures are instant, the real glove blocks ~2 s.
+  int? _takeImuError() {
+    final e = _forcedImuError;
+    _forcedImuError = null;
+    return e;
   }
 
   /// One wizard capture (master §4.2): a forced error fires once, then the
@@ -397,6 +426,8 @@ class MockGloveConnection implements GloveConnection {
       calibrationStep: _calStep,
       linkUp: _phase == GloveConnectionPhase.ready,
       lastErrorCode: _lastError,
+      mountUncalibrated: _mountId == 0,
+      mountCalibrationId: _mountId,
     ));
   }
 

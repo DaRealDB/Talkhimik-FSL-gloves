@@ -24,7 +24,12 @@ enum AppCommand {
   setRate(0x05, payloadBytes: 2), // u16 LE ms (firmware clamps 20–1000)
   zeroYaw(0x06),
   setHand(0x07, payloadBytes: 1), // 0 = left, 1 = right (NVS)
-  vibrate(0x08, payloadBytes: 2); // u16 LE ms
+  vibrate(0x08, payloadBytes: 2), // u16 LE ms
+  // fw 1.3.0 IMU mount calibration — each blocks the glove ~2 s (telemetry
+  // pauses); the result arrives as the STATUS error byte (0 = ok).
+  captureMountPose1(0x09), // back of hand up, fingers forward, still 2 s
+  captureMountPose2(0x0A), // fingers straight up, still 2 s; saves mount
+  calibrateGyro(0x0B); // glove at rest 2 s; re-measures gyro bias
 
   const AppCommand(this.code, {this.payloadBytes = 0});
 

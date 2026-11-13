@@ -8,6 +8,9 @@ void main() {
     expect(AppCommand.capture90.encode(), [0x03]);
     expect(AppCommand.cancelCalibration.encode(), [0x04]);
     expect(AppCommand.zeroYaw.encode(), [0x06]);
+    expect(AppCommand.captureMountPose1.encode(), [0x09]);
+    expect(AppCommand.captureMountPose2.encode(), [0x0A]);
+    expect(AppCommand.calibrateGyro.encode(), [0x0B]);
   });
 
   test('u16 payloads encode little-endian', () {
