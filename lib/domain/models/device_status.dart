@@ -11,7 +11,14 @@ enum GloveErrorCode {
   captureNotCalibrating(1),
   unknownCommand(2),
   spanReject(3),
-  resistanceFault(4);
+  resistanceFault(4),
+  // fw 1.3.0 (config.h StatusError) — IMU mount / gyro calibration.
+  imuMissing(5),
+  mountGravity(6),
+  mountNotPerpendicular(7),
+  mountSequence(8),
+  gyroMoving(9),
+  gyroStuck(10);
 
   const GloveErrorCode(this.code);
   final int code;
@@ -23,14 +30,20 @@ enum GloveErrorCode {
         2 => unknownCommand,
         3 => spanReject,
         4 => resistanceFault,
+        5 => imuMissing,
+        6 => mountGravity,
+        7 => mountNotPerpendicular,
+        8 => mountSequence,
+        9 => gyroMoving,
+        10 => gyroStuck,
         0 || null => none,
         _ => null,
       };
 }
 
 /// Snapshot of the glove's Device Status characteristic — the firmware's
-/// 5-byte STATUS frame (Code Reference §5.3): mode, calibration step,
-/// battery, flags, and error code.
+/// STATUS frame (Code Reference §5.3): mode, calibration step, battery,
+/// flags, error code, and (fw 1.3.0+) mount_calibration_id.
 @immutable
 class DeviceStatusPacket {
   const DeviceStatusPacket({
@@ -40,6 +53,9 @@ class DeviceStatusPacket {
     this.uncalibrated = false,
     this.linkUp = false,
     this.lastErrorCode,
+    this.mountUncalibrated = false,
+    this.gyroUncalibrated = false,
+    this.mountCalibrationId,
   });
 
   /// Battery charge, 0–100; null when the glove did not report it
@@ -61,6 +77,18 @@ class DeviceStatusPacket {
   /// Last error reported by the glove (GloveErrorCode values); null when
   /// none.
   final int? lastErrorCode;
+
+  /// STATUS flags bit1 (fw 1.3.0+): no stored mount matrix, the firmware's
+  /// default in use. Always false for fw 1.2.0 gloves.
+  final bool mountUncalibrated;
+
+  /// STATUS flags bit2 (fw 1.3.0+): gyro bias not measured.
+  final bool gyroUncalibrated;
+
+  /// STATUS bytes 5–8 (fw 1.3.0+): 0 = default mount, non-zero = the id of
+  /// the saved mount calibration; null when the glove sends the 5-byte
+  /// (fw 1.2.0) frame.
+  final int? mountCalibrationId;
 
   bool get hasError => lastErrorCode != null && lastErrorCode != 0;
 }

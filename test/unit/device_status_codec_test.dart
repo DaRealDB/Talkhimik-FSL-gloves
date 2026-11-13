@@ -38,7 +38,7 @@ void main() {
     expect(GloveErrorCode.fromCode(1), GloveErrorCode.captureNotCalibrating);
     expect(GloveErrorCode.fromCode(0), GloveErrorCode.none);
     expect(GloveErrorCode.fromCode(null), GloveErrorCode.none);
-    expect(GloveErrorCode.fromCode(9), isNull); // unmapped → generic chip
+    expect(GloveErrorCode.fromCode(99), isNull); // unmapped → generic chip
   });
 
   test('clamps battery to 0–100', () {
@@ -57,14 +57,47 @@ void main() {
     );
   });
 
-  test('rejects payloads that are not 5 bytes', () {
+  test('rejects payloads shorter than 5 bytes', () {
     expect(
       () => DeviceStatusCodec.decode(Uint8List.fromList([1, 2, 3, 4])),
       throwsFormatException,
     );
-    expect(
-      () => DeviceStatusCodec.decode(Uint8List.fromList([1, 2, 3, 4, 5, 6])),
-      throwsFormatException,
-    );
+  });
+
+  test('fw 1.2.0 5-byte frame: no mount id, new flags false', () {
+    final p = DeviceStatusCodec.decode(Uint8List.fromList([0, 0, 50, 0, 0]));
+    expect(p.mountCalibrationId, isNull);
+    expect(p.mountUncalibrated, isFalse);
+    expect(p.gyroUncalibrated, isFalse);
+  });
+
+  test('fw 1.3.0 9-byte frame: flags bit1/bit2 + mount id u32 LE', () {
+    final p = DeviceStatusCodec.decode(Uint8List.fromList(
+        [0, 0, 0xFF, 0x07, 0, 0x78, 0x56, 0x34, 0x12]));
+    expect(p.uncalibrated, isTrue);
+    expect(p.mountUncalibrated, isTrue);
+    expect(p.gyroUncalibrated, isTrue);
+    expect(p.mountCalibrationId, 0x12345678);
+    final calibrated = DeviceStatusCodec.decode(
+        Uint8List.fromList([0, 0, 0xFF, 0, 0, 0, 0, 0, 0]));
+    expect(calibrated.mountCalibrationId, 0); // default mount in use
+    expect(calibrated.mountUncalibrated, isFalse);
+  });
+
+  test('partial mount id (6–8 bytes) decodes the base, id null', () {
+    final p = DeviceStatusCodec.decode(
+        Uint8List.fromList([1, 2, 3, 4, 5, 6]));
+    expect(p.calibrationStep, 2);
+    expect(p.mountCalibrationId, isNull);
+  });
+
+  test('fw 1.3.0 error codes 5..10', () {
+    expect(GloveErrorCode.fromCode(5), GloveErrorCode.imuMissing);
+    expect(GloveErrorCode.fromCode(6), GloveErrorCode.mountGravity);
+    expect(GloveErrorCode.fromCode(7), GloveErrorCode.mountNotPerpendicular);
+    expect(GloveErrorCode.fromCode(8), GloveErrorCode.mountSequence);
+    expect(GloveErrorCode.fromCode(9), GloveErrorCode.gyroMoving);
+    expect(GloveErrorCode.fromCode(10), GloveErrorCode.gyroStuck);
+    expect(GloveErrorCode.fromCode(11), isNull);
   });
 }

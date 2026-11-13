@@ -29,7 +29,8 @@ class GattIds {
   /// Command: WRITE + WRITE-NO-RESPONSE — u8 opcode + optional payload.
   static const String command = '3f8d2a6b-9c4e-4d7f-a1e3-6b5c8d0e2f49';
 
-  /// Device Status: READ + NOTIFY — 5 bytes every 250 ms.
+  /// Device Status: READ + NOTIFY — 5 bytes (fw 1.2.0) or 9 bytes
+  /// (fw 1.3.0+) every 250 ms.
   static const String deviceStatus = 'c2b6e8d4-1a7f-4c3e-9d5b-0f2a6e8c4d73';
 
   /// Calibration Info: READ + NOTIFY — 104-byte profile table, pushed after
@@ -39,8 +40,10 @@ class GattIds {
   /// TELEMETRY frame length in bytes (Code Reference §5.2).
   static const int telemetryPacketLength = 29;
 
-  /// STATUS frame length in bytes (Code Reference §5.3).
+  /// STATUS frame length in bytes (Code Reference §5.3): fw 1.2.0 sends
+  /// the 5-byte base; fw 1.3.0 appends mount_calibration_id (u32 LE) for 9.
   static const int statusPacketLength = 5;
+  static const int statusPacketLengthWithMount = 9;
 
   /// CAL_INFO table length in bytes (Code Reference §5.5).
   static const int calInfoPacketLength = 104;
