@@ -13,7 +13,7 @@
 |---|---|
 | **Team** | Daryl D. Bacusmo · Dewey Raven S. Cabahug · Sheena Patricia Kaye Caneja · Joppy B. Vargas (Team Sagbotics) |
 | **Adviser** | Engr. Nikko D. Alferez — CIT University |
-| **App** | `talkhimik_app` (Flutter) · **Firmware** | `talkhimik-ble` fw 1.2.0 (ESP32-S3 ×2) |
+| **App** | `talkhimik_app` (Flutter) · **Firmware** | `talkhimik-ble` fw 1.3.0 (ESP32-S3 ×2; 1.2.0 still supported) |
 | **App version** | 0.1.0+1 · Dart `^3.13.2` |
 
 **Current stage:** two Seeed XIAO ESP32S3 BLE gloves (5 flex sensors +
@@ -47,22 +47,35 @@ middle, ring, pinky** (0–4).
 | 0 | u8 | hand (0 = L, 1 = R) |
 | 1–2 | u16 | seq (wraps at 65536) |
 | 3–7 | u8 ×5 | flex angle 0–90° |
-| 8–9 / 10–11 / 12–13 | i16 ×3 | roll / pitch / yaw ×10 (degrees = value / 10) |
+| 8–9 / 10–11 / 12–13 | i16 ×3 | roll / pitch / yaw ×10 (degrees = value / 10; body frame) |
 | 14–23 | u16 ×5 | raw 12-bit ADC |
 | 24–27 | u32 | calibration_id (0 = never calibrated) |
 | 28 | u8 | quality: bit0..4 = finger valid, bit5 = any weak span |
 
 Reject frames ≠ 29 bytes.
 
-### STATUS — 5 bytes, every 250 ms
+fw 1.3.0 IMU (layout unchanged): every read goes through the mount matrix
+`R_MOUNT` (default `MOUNT_FLIP_X`: ax, −ay, −az — the MPU is mounted upside
+down), then accel scale + gyro bias, then a complementary filter (α 0.98) on
+the gravity vector. Body frame: palm down, level, fingers forward → roll =
+pitch = 0; pitch + = fingertips up. Roll/pitch are accel-referenced; yaw
+integrates the gyro rate about vertical (drifts; ZERO_YAW re-baselines).
+**Roll wraps at ±180°** and is undefined near pitch ±90° — ML features must
+use sin/cos(roll) or the gravity vector, never raw roll degrees.
+
+### STATUS — 9 bytes (fw 1.3.0) / 5 bytes (fw 1.2.0), every 250 ms
+
+The app accepts ≥ 5 bytes; bytes 0–4 are identical in both versions, and
+the mount id is read only when bytes 5–8 are present.
 
 | Off | Type | Field |
 |---|---|---|
 | 0 | u8 | mode (0 streaming, 1 calibrating) |
 | 1 | u8 | calibration step (0 idle; 1–10) |
 | 2 | u8 | battery % (`0xFF` = unknown — the glove always sends this) |
-| 3 | u8 | flags (bit0 = uncalibrated → placeholder angles) |
-| 4 | u8 | error: 0 none · 1 capture-not-calibrating · 2 unknown command · 3 90° within 5% of flat (redo) · 4 resistance outside 1k..100k (finger fault) |
+| 3 | u8 | flags: bit0 = flex uncalibrated → placeholder angles · bit1 = IMU mount uncalibrated (config.h default R_MOUNT in use) · bit2 = gyro bias not calibrated (fw 1.3.0) |
+| 4 | u8 | error: 0 none · 1 capture-not-calibrating · 2 unknown command · 3 90° within 5% of flat (redo) · 4 resistance outside 1k..100k (finger fault) · fw 1.3.0: 5 IMU missing · 6 mount pose \|a\| off 9.81 by > 15% (moving / bad sensor — redo) · 7 poses not perpendicular (\|u1·u2\| > 0.2 — redo pose 2) · 8 POSE2 before a good POSE1 · 9 gyro moving during bias capture (hold still, redo) · 10 gyro stuck (std dev ≈ 0 — sensor not responding) |
+| 5–8 | u32 | mount_calibration_id (fw 1.3.0; 0 = default R_MOUNT, random non-zero once mount-calibrated) |
 
 ### CAL_INFO — 104 bytes, read on connect + notify on every save
 
@@ -90,6 +103,14 @@ Reject frames ≠ 29 bytes.
 | 0x06 | ZERO_YAW | — |
 | 0x07 | SET_HAND | u8 (0 L / 1 R; name updates on reboot) |
 | 0x08 | VIBRATE | u16 ms |
+| 0x09 | CAPTURE_MOUNT_POSE1 | — (fw 1.3.0; back of hand up, fingers forward, level, still 2 s) |
+| 0x0A | CAPTURE_MOUNT_POSE2 | — (fw 1.3.0; fingers straight up, still 2 s; solves + saves R_MOUNT) |
+| 0x0B | CALIBRATE_GYRO | — (fw 1.3.0; glove at rest 2 s; also runs at boot) |
+
+0x09–0x0B each block the glove ~2 s (telemetry pauses). Mount calibration is
+saved per hand in NVS (`mount_L` / `mount_R`) using the **boot-time** hand:
+after SET_HAND, reboot the glove before mount calibration. A fw 1.2.0 glove
+answers 0x09–0x0B with error 2.
 
 ### Production label packet (planned)
 
@@ -195,7 +216,7 @@ Two hand panels (side-by-side wide, tabbed L/R on phones), driven by
 seq-gap loss, trailing-second update rate, mismatch flag):
 
 - **HandView** — CustomPainter, 3-segment fingers, mirrored left, yaw
-  in-plane + roll/pitch skew, ticker low-pass, invalid ✗ / uncalibrated
+  in-plane + roll/pitch skew, ticker low-pass (roll/yaw take the shortest arc across ±180°), invalid ✗ / uncalibrated
   desaturated / stale 40 % opacity
 - Finger bars (0–90°, invalid dimmed, weak amber) · raw ADC + Ω details
   (collapsed expander; recomputed via §2) · IMU tiles (yaw labelled
@@ -224,12 +245,28 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 - Cancel (0x04) keeps the previous profile. Summary: per-finger
   valid/weak/flat Ω/90° Ω/span + header (cal_id, fw, R_DIV).
 
+### Motion sensor setup (IMU mount, fw 1.3.0)
+
+- Calibration screen, below the hand picker: one card per glove with
+  "Check stillness sensor" (0x0B), Pose 1 (0x09), Pose 2 (0x0A) and the
+  state from STATUS flags bit1 (set up / default). Widget keys
+  `mount-<left|right>-<command name>`.
+- STATUS has no mount progress field. `MountCalibrationController` takes
+  each command's result from the error byte of the first STATUS after a
+  300 ms stale window (the glove sends nothing during the ~2 s capture);
+  5 s without one → "did not answer". Errors 2, 5–10 map to plain messages
+  (`AppStrings.mount*`). A good Pose 2 bumps `mount_calibration_id`.
+- fw 1.2.0 gloves (5-byte STATUS, no mount id) show an update note instead
+  of the buttons. A note reminds the user to restart the glove after
+  changing its hand.
+
 ---
 
 ## 6. Dataset recorder (5 Hz, calibration-aware)
 
-- One session per (hand, calibration_id) — a change closes the file and
-  opens a new one; files never mix calibrations. `cal_id == 0` blocks
+- One session per (hand, calibration_id, mount_calibration_id) — a change
+  in either id closes the file and opens a new one; files never mix
+  calibrations (mount id from STATUS; null on fw 1.2.0). `cal_id == 0` blocks
   recording.
 - Drops counted, never kept: raw 0/4095 on a **valid** finger (`adcRail`),
   wrap-safe seq gap > 3 (`seqGap`). Invalid fingers lose their columns.
@@ -241,8 +278,9 @@ seq-gap loss, trailing-second update rate, mismatch flag):
   CSV header (§ thumb columns only if valid bit0, first in each group):
   `timestamp_ms, session_id, signer_id, hand, calibration_id, label,
   take_id, raw_*, ohm_*, ang_*, roll, pitch, yaw, quality_flag`.
-  Sidecar: session/signer/hand/cal_id/rate/fw/recorded_at/rows/dropped
-  {adcRail, seqGap}/r_div/fingers{valid,weak,flat/bent ohm+adc,span}.
+  Sidecar: session/signer/hand/cal_id/mount_calibration_id/roll_note/rate/
+  fw/recorded_at/rows/dropped {adcRail, seqGap}/r_div/fingers{valid,weak,
+  flat/bent ohm+adc,span}. `roll_note` matches the web dashboard's text.
 - Rows are appended as recorded (crash-safe); sessions list newest first
   with size, Share (`share_plus`) and Delete. Web/Windows without path
   provider: recording unsupported (graceful `UnsupportedError`).
@@ -265,7 +303,7 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 
 ## 8. Testing
 
-238 tests, `flutter analyze` clean, per-phase commits.
+248 tests, `flutter analyze` clean, per-phase commits.
 
 - **Unit**: sensor-math golden vectors + seqGap wrap · codecs vs §1 ·
   wizard step/error/completion · recorder rules (cal change, cal 0 gate,
@@ -279,13 +317,15 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 ### Hardware verification (staged, nRF Connect first)
 
 - **A.** nRF Connect: `TALKHIMIK-L/R` advertising §1 service; four
-  characteristics; 29/5/104-byte frames; opcodes 0x01–0x08; stateless
-  reconnect.
+  characteristics; 29/9/104-byte frames (STATUS 5 on fw 1.2.0); opcodes
+  0x01–0x0B; stateless reconnect.
 - **B.** App static: BLE manifest permissions; Force mock off; analyze +
   tests green; `flutter build apk --debug`.
 - **C.** Phone + glove: permissions → Scanning…→ Connected; battery "—"
   and Uncalibrated chip; Live hand moves; wizard steps 1–10 with `cal_id`
-  bump; record labeled take → CSV + sidecar; connection-lost banner ≤ 3 s
+  bump; motion sensor setup: Pose 1 → Pose 2 → "set up" and a new
+  `mount_calibration_id`, hand animation level with palm down; record
+  labeled take → CSV + sidecar; connection-lost banner ≤ 3 s
   with 1→2→4→8→30 s backoff; walk out of range and back — no dupes.
   **On-device link diagnostics** (no frames? wrong MTU?): Settings →
   Developer → BLE diagnostics — report MTU, notify results, last payload

@@ -267,7 +267,7 @@ class MockGloveConnection implements GloveConnection {
       bent90Adc: const [1500, 1500, 1500, 1500, 1500],
       rDiv: const [10000, 10000, 10000, 10000, 10000],
       spanCounts: const [1000, 1000, 1000, 1000, 1000],
-      firmwareVersion: '1.2.0',
+      firmwareVersion: '1.3.0',
     ));
   }
 
