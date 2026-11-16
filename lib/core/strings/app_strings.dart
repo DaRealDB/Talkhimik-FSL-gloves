@@ -48,6 +48,23 @@ class AppStrings {
   static const unknownCommand = 'Unknown command';
   static const spanReject = 'Redo — too close to flat';
   static const gloveError = 'Glove error';
+
+  /// Banner text for the STATUS error byte — the result of the LAST command
+  /// the glove ran (it stays until the next command; config.h StatusError).
+  static String gloveErrorDetail(String hand, int code) =>
+      '$gloveError ($hand): ${switch (code) {
+        1 => 'a capture was sent outside calibration. Start calibration again.',
+        2 => 'the glove did not understand a command. Update its firmware.',
+        3 => 'a calibration bend was too small. Redo calibration.',
+        4 => 'a finger sensor reads out of range. Check its wiring.',
+        5 => 'motion sensor not found. Check its wiring.',
+        6 => 'the glove moved during motion sensor setup. Redo it, holding still.',
+        7 => 'Pose 2 was not straight up. Redo Pose 2.',
+        8 => 'Pose 2 was sent before Pose 1. Do Pose 1 first.',
+        9 => 'the glove moved during the stillness check. Redo it on a table.',
+        10 => 'motion sensor not responding. Check its wiring.',
+        _ => 'code $code.',
+      }}';
   static const connectGlove = 'Connect glove';
   static const blePermissionDenied =
       'Bluetooth permissions were denied. Allow nearby devices and try '

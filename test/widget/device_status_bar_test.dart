@@ -103,7 +103,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(DeviceStatusBar.errorChipKey), findsOneWidget);
-    expect(find.text(AppStrings.gloveError), findsOneWidget);
+    expect(find.text(AppStrings.gloveErrorDetail('L', 4)), findsOneWidget);
+    expect(find.textContaining('Check its wiring'), findsOneWidget);
   });
 
   testWidgets('tapping the pill opens the per-hand details sheet',

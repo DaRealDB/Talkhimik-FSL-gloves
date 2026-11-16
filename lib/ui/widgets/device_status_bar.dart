@@ -161,10 +161,15 @@ class DeviceStatusBar extends ConsumerWidget {
             colors: [AppColors.azure, AppColors.navy],
             textColor: AppColors.navyText,
           )
-        else if (state.status?.hasError ?? false)
+        else if ((state.status?.hasError ?? false) ||
+            (rightState.status?.hasError ?? false))
           _Banner(
             key: errorChipKey,
-            text: AppStrings.gloveError,
+            text: (state.status?.hasError ?? false)
+                ? AppStrings.gloveErrorDetail(
+                    AppStrings.leftHandLabel, state.status!.lastErrorCode!)
+                : AppStrings.gloveErrorDetail(AppStrings.rightHandLabel,
+                    rightState.status!.lastErrorCode!),
             colors: [scheme.errorContainer, scheme.error],
             textColor: scheme.onErrorContainer,
           ),
@@ -263,7 +268,7 @@ class _Banner extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               text,
-              maxLines: 1,
+              maxLines: 3, // error banners carry a one-sentence reason
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context)
                   .textTheme
