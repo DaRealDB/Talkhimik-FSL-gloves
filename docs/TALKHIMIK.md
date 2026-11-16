@@ -24,6 +24,18 @@ ON THE PHONE (§13) — threshold rules today, a trained MLP from
 `assets/models/` when one ships (§15). On-glove TFLM label packets remain
 the next firmware stage (planned).
 
+### Tech stack
+
+| Part | Stack |
+|---|---|
+| **App** | Flutter 3.47 (stable) · Dart `^3.13.2` · Material 3, Inter font · Android target (Windows/web = mock gloves only) |
+| App packages (`pubspec.yaml`) | `flutter_riverpod` 3.4.3 (state) · `flutter_blue_plus` 2.3.12 (BLE) · `hive_ce` 2.19.3 (event log) · `shared_preferences` 2.5.5 (settings, CAL_INFO cache) · `flutter_tts` 4.2.5 (speech) · `permission_handler` 12.0.3 (pinned: 13.x needs compileSdk 37) · `path_provider` 2.1.5 · `share_plus` ^13.3.1 · `meta` |
+| App tests | `flutter_test` · `flutter_lints` ^6.0.0 |
+| **Glove hardware** | 2 × Seeed XIAO ESP32S3 · 5 flex sensors (voltage divider → 12-bit ADC) · MPU-6050/6500 IMU (I²C, mounted upside down) · vibration motor |
+| **Firmware** (`talkhimik-ble`) | Arduino (C++), Seeed ESP32 board package, board XIAO_ESP32S3 · NimBLE-Arduino 2.x (GATT server) · MPU6050_light (IMU) · `Preferences` (NVS: calibration, hand, mount) |
+| **Web dashboard** | Single-file HTML + JS (`web/index.html`), Web Bluetooth, Chrome/Edge, served with `python -m http.server` |
+| **ML pipeline** (`ml/`) | Python · numpy ≥ 1.26 (loader, splits, MLP, exports) · TensorFlow ≥ 2.16 optional (only for `.tflite` export) · on the phone the model runs as a pure-Dart MLP (§13, §15) |
+
 ---
 
 ## 1. Glove contract (byte-exact, little-endian) — SINGLE COPY
