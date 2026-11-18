@@ -279,6 +279,28 @@ void main() {
     expect(index.labels['A']!.takes, 1);
   });
 
+  test('reset deletes everything, but never while recording', () async {
+    final c = makeContainer();
+    await emitCalInfo(calInfo(3));
+    await startRecording(c);
+    final recorder = c.read(datasetRecorderControllerProvider.notifier);
+    await recorder.startTake('A');
+    await emit(frame(10, 3));
+    await recorder.sampleNow();
+    await recorder.stopTake();
+
+    await recorder.resetAll(); // refused: still recording
+    expect(dir.listSync(), isNotEmpty);
+
+    await recorder.stop();
+    await recorder.resetAll();
+    final s = c.read(datasetRecorderControllerProvider);
+    expect(s.sessions, isEmpty);
+    expect(s.undoLabel, '');
+    final index = await c.read(coverageIndexStoreProvider).rebuild();
+    expect(index.labels, isEmpty);
+  });
+
   test('undo still works after Stop recording', () async {
     final c = makeContainer();
     await emitCalInfo(calInfo(3));

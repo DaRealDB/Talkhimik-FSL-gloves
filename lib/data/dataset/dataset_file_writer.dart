@@ -78,6 +78,58 @@ class DatasetFileWriter {
     }
   }
 
+  /// Deletes every dataset file (CSVs, sidecars, index.json) — the reset.
+  Future<void> deleteAll() async {
+    final dir = await _dirProvider();
+    if (!await dir.exists()) return;
+    await for (final entity in dir.list()) {
+      if (entity is File) await entity.delete();
+    }
+  }
+
+  /// Writes a sidecar for every CSV that lacks one (the app was killed
+  /// before Stop), rebuilt from the CSV itself so it can be listed and
+  /// shared. Only what the CSV proves is written: a finger is valid when
+  /// its ang_ column exists; `recovered: true` marks the guesswork-free
+  /// subset. Returns how many were recovered.
+  Future<int> recoverSidecars() async {
+    final dir = await _dirProvider();
+    if (!await dir.exists()) return 0;
+    var recovered = 0;
+    await for (final entity in dir.list()) {
+      if (entity is! File || !entity.path.endsWith('.csv')) continue;
+      final base = entity.path.substring(0, entity.path.length - 4);
+      final sidecar = File('${base}_sidecar.json');
+      if (await sidecar.exists()) continue;
+      try {
+        final lines =
+            (await entity.readAsLines()).where((l) => l.isNotEmpty).toList();
+        if (lines.length < 2) continue; // header only: nothing to save
+        final header = CoverageIndexStore.splitCsv(lines.first);
+        final first = CoverageIndexStore.splitCsv(lines[1]);
+        String col(String name) => first[header.indexOf(name)];
+        await sidecar.writeAsString(jsonEncode({
+          'session_id': col('session_id'),
+          'signer_id': col('signer_id'),
+          'hand': col('hand'),
+          'calibration_id': int.parse(col('calibration_id')),
+          'sample_rate_hz': 5,
+          'rows': lines.length - 1,
+          'dropped_frames': 0,
+          'recovered': true,
+          'fingers': {
+            for (final f in fingerNames)
+              f: {'valid': header.contains('ang_$f')},
+          },
+        }));
+        recovered++;
+      } catch (_) {
+        // Malformed CSV: leave it alone rather than write a wrong sidecar.
+      }
+    }
+    return recovered;
+  }
+
   /// Sessions on disk, newest first (master §5.4), rebuilt from sidecars.
   Future<List<DatasetSessionSummary>> listSessions() async {
     final dir = await _dirProvider();

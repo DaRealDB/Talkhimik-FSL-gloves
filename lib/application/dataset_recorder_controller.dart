@@ -117,8 +117,28 @@ class DatasetRecorderController extends Notifier<RecorderState> {
       }
       _sampler?.cancel();
     });
-    _loadSessions();
+    unawaited(_recoverThenLoad());
     return const RecorderState();
+  }
+
+  Future<void> _recoverThenLoad() async {
+    try {
+      await ref.read(datasetWriterProvider).recoverSidecars();
+    } catch (_) {
+      // Directory unavailable: same fallback as _loadSessions.
+    }
+    if (ref.mounted) await _loadSessions();
+  }
+
+  /// Deletes every recording on the phone (fresh start). Refused while
+  /// recording so an open session's files are never pulled out from under it.
+  Future<void> resetAll() async {
+    if (state.phase == RecordingPhase.recording) return;
+    await ref.read(datasetWriterProvider).deleteAll();
+    _takeSessions.clear();
+    _undoTakeId = null;
+    state = state.copyWith(undoLabel: '', revision: state.revision + 1);
+    await _loadSessions();
   }
 
   Future<void> _loadSessions() async {

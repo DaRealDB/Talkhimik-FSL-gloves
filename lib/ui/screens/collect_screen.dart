@@ -63,6 +63,30 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
   static String _display(String label) =>
       label == restLabel ? 'REST' : label;
 
+  Future<void> _confirmReset() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(AppStrings.datasetResetTitle),
+        content: const Text(AppStrings.datasetResetBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(AppStrings.datasetUndoKeep),
+          ),
+          FilledButton(
+            key: const Key('reset-all-confirm'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(AppStrings.datasetResetConfirm),
+          ),
+        ],
+      ),
+    );
+    if (ok ?? false) {
+      await ref.read(datasetRecorderControllerProvider.notifier).resetAll();
+    }
+  }
+
   Future<void> _confirmUndo(String label) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -322,6 +346,15 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
+          TextButton.icon(
+            key: const Key('reset-all-button'),
+            icon: const Icon(Icons.delete_forever_outlined),
+            label: const Text(AppStrings.datasetResetAll),
+            onPressed: state.phase == RecordingPhase.recording ||
+                    state.sessions.isEmpty
+                ? null
+                : _confirmReset,
+          ),
           const SizedBox(height: 24),
           Text(AppStrings.datasetSessions,
               style: Theme.of(context).textTheme.titleMedium),

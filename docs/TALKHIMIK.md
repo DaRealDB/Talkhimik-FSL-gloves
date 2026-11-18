@@ -290,6 +290,12 @@ seq-gap loss, trailing-second update rate, mismatch flag):
   sidecars and rebuilds coverage. One level; works until the app restarts.
   Sidecars are also rewritten at every take end, so sessions are listed
   and shareable without pressing Stop.
+- **Delete all recordings** (confirm; disabled while recording) wipes every
+  CSV, sidecar and `index.json` — a clean restart after a recalibration.
+- **Sidecar recovery**: on app start, a CSV with no sidecar (app killed
+  before any take ended) gets one rebuilt from the CSV — ids from its first
+  row, `rows` counted, finger `valid` = its `ang_` column exists, plus
+  `"recovered": true`. Keeps Share and the coverage counts in agreement.
 - Files (app-support `talkhimik_dataset/`):
   `talkhimik_<L|R>_<session_id>_cal<cal_id>.csv` + `_sidecar.json`.
   CSV header (§ thumb columns only if valid bit0, first in each group):
@@ -320,7 +326,7 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 
 ## 8. Testing
 
-251 tests, `flutter analyze` clean, per-phase commits.
+254 tests, `flutter analyze` clean, per-phase commits.
 
 - **Unit**: sensor-math golden vectors + seqGap wrap · codecs vs §1 ·
   wizard step/error/completion · recorder rules (cal change, cal 0 gate,

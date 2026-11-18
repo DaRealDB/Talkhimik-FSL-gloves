@@ -77,6 +77,39 @@ void main() {
     return file.readAsString();
   }
 
+  test('a CSV without a sidecar gets one rebuilt from the CSV', () async {
+    final s = session(validMask: 0x1E); // thumb invalid
+    await writer.openSession(s);
+    await writer.appendRow(s, row());
+    await writer.appendRow(s, row());
+    // No closeSession: the app was killed mid-recording.
+    expect(await writer.listSessions(), isEmpty);
+
+    expect(await writer.recoverSidecars(), 1);
+    final listed = (await writer.listSessions()).single;
+    expect(listed.sessionId, s.sessionId);
+    expect(listed.rows, 2);
+    expect(listed.calibrationId, s.calibrationId);
+    final sidecar = jsonDecode(await File('${dir.path}/${listed.sidecarName}')
+        .readAsString()) as Map<String, Object?>;
+    expect(sidecar['recovered'], isTrue);
+    final fingers = sidecar['fingers']! as Map<String, Object?>;
+    expect((fingers['thumb']! as Map)['valid'], isFalse);
+    expect((fingers['pointer']! as Map)['valid'], isTrue);
+
+    expect(await writer.recoverSidecars(), 0); // idempotent
+  });
+
+  test('deleteAll removes every dataset file', () async {
+    final s = session();
+    await writer.openSession(s);
+    await writer.appendRow(s, row());
+    await writer.closeSession(s);
+    await File('${dir.path}/index.json').writeAsString('{}');
+    await writer.deleteAll();
+    expect(dir.listSync(), isEmpty);
+  });
+
   test('full valid mask writes the exact §5.2 header on one line', () async {
     final s = session();
     await writer.openSession(s);

@@ -187,6 +187,13 @@ class AppStrings {
       'This cannot be reversed.';
   static const datasetUndoConfirm = 'Remove';
   static const datasetUndoKeep = 'Keep it';
+  static const datasetResetAll = 'Delete all recordings';
+  static const datasetResetTitle = 'Delete all recordings?';
+  static const datasetResetBody =
+      'Every recording on this phone will be deleted and all letter counts '
+      'go back to 0. Share them first if you want a copy. '
+      'This cannot be reversed.';
+  static const datasetResetConfirm = 'Delete all';
   static const datasetRecording = 'Recording';
   static const datasetSessions = 'Dataset sessions';
   static const datasetShare = 'Share';
