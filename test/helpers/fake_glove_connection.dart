@@ -62,9 +62,24 @@ class FakeGloveConnection implements GloveConnection {
     }
   }
 
+  /// When true, [sendCommand] throws like a failed BLE write.
+  bool failCommands = false;
+
+  /// What a STATUS READ returns via [refreshStatus]; null = nothing.
+  DeviceStatusPacket? readableStatus;
+  int statusReads = 0;
+
   @override
   Future<void> sendCommand(AppCommand command, {int value = 0}) async {
+    if (failCommands) throw Exception('simulated write failure');
     commands.add(command);
+  }
+
+  @override
+  Future<void> refreshStatus() async {
+    statusReads++;
+    final s = readableStatus;
+    if (s != null) status.add(s);
   }
 
   @override

@@ -266,7 +266,11 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 - STATUS has no mount progress field. `MountCalibrationController` takes
   each command's result from the error byte of the first STATUS after a
   300 ms stale window (the glove sends nothing during the ~2 s capture);
-  5 s without one → "did not answer". Errors 2, 5–10 map to plain messages
+  15 s without one → "did not answer". From 4 s on it also READs STATUS
+  every 1 s (`GloveConnection.refreshStatus`) in case NOTIFYs are not
+  arriving — not sooner, since the stored value keeps the previous result
+  until the capture ends. A failed command write shows "Could not reach
+  the glove" at once. Errors 2, 5–10 map to plain messages
   (`AppStrings.mount*`). A good Pose 2 bumps `mount_calibration_id`.
 - fw 1.2.0 gloves (5-byte STATUS, no mount id) show an update note instead
   of the buttons. A note reminds the user to restart the glove after
@@ -326,7 +330,7 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 
 ## 8. Testing
 
-254 tests, `flutter analyze` clean, per-phase commits.
+256 tests, `flutter analyze` clean, per-phase commits.
 
 - **Unit**: sensor-math golden vectors + seqGap wrap · codecs vs §1 ·
   wizard step/error/completion · recorder rules (cal change, cal 0 gate,

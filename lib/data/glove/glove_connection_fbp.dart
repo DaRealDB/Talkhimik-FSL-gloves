@@ -72,6 +72,7 @@ class FlutterBlueGloveConnection implements GloveConnection {
   final List<StreamSubscription<Object?>> _subs = [];
   BluetoothDevice? _device;
   BluetoothCharacteristic? _commandChar;
+  BluetoothCharacteristic? _statusChar;
   bool _manualDisconnect = false;
   bool _disposed = false;
 
@@ -306,6 +307,7 @@ class FlutterBlueGloveConnection implements GloveConnection {
 
       _device = target;
       _commandChar = commandChar;
+      _statusChar = statusChar;
       _log('ready (mtu ${diagnostics.mtu}, notify T:$enabledTelemetry '
           'S:$enabledStatus C:$enabledCalInfo)');
       _addPhase(GloveConnectionPhase.ready);
@@ -396,6 +398,19 @@ class FlutterBlueGloveConnection implements GloveConnection {
     await commandChar.write(command.encode(value: value));
   }
 
+  @override
+  Future<void> refreshStatus() async {
+    _assertNotDisposed();
+    final statusChar = _statusChar;
+    if (statusChar == null || !(_device?.isConnected ?? false)) return;
+    try {
+      _status.add(DeviceStatusCodec.decode(
+          Uint8List.fromList(await statusChar.read())));
+    } on FormatException {
+      _countReject(reason: 'exception', char: 'STATUS');
+    }
+  }
+
   /// Deliberate teardown — must NOT trigger auto-reconnect.
   @override
   Future<void> disconnect() async {
@@ -431,6 +446,7 @@ class FlutterBlueGloveConnection implements GloveConnection {
     final device = _device;
     _device = null;
     _commandChar = null;
+    _statusChar = null;
     _teardownSubs();
     if (device == null) return;
     try {

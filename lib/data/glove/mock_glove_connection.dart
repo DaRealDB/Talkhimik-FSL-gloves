@@ -186,6 +186,9 @@ class MockGloveConnection implements GloveConnection {
   int get calibrationId => _calId;
 
   @override
+  Future<void> refreshStatus() async => _emitStatus();
+
+  @override
   Future<void> sendCommand(AppCommand command, {int value = 0}) async {
     commandLog.add(command);
     switch (command) {

@@ -147,6 +147,8 @@ class AppStrings {
   static const mountSaved = 'Motion sensor setup saved.';
   static const mountGyroOk = 'Stillness sensor checked.';
   static const mountNoReply = 'The glove did not answer. Try again.';
+  static const mountSendFailed =
+      'Could not reach the glove. Check that it is connected and try again.';
   static const mountNeedsNewFirmware =
       'This glove needs a firmware update for motion sensor setup.';
   static const mountSensorNotResponding =

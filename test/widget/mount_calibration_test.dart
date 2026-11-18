@@ -73,6 +73,31 @@ void main() {
     expect(find.text(AppStrings.mountNotPerpendicular), findsOneWidget);
   });
 
+  testWidgets('silent NOTIFYs: a STATUS read after the capture gets the result',
+      (tester) async {
+    await tester.pumpWidget(wrap());
+    glove.emitStatus(fw13);
+    await tester.pumpAndSettle();
+    glove.readableStatus = fw13.copyWithError(7);
+    await tapKey(tester, pose2);
+    await tester.pump(const Duration(seconds: 3));
+    expect(glove.statusReads, 0); // capture still running: no stale reads
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(glove.statusReads, greaterThan(0));
+    expect(find.text(AppStrings.mountNotPerpendicular), findsOneWidget);
+  });
+
+  testWidgets('a failed write says so at once', (tester) async {
+    await tester.pumpWidget(wrap());
+    glove.emitStatus(fw13);
+    await tester.pumpAndSettle();
+    glove.failCommands = true;
+    await tapKey(tester, pose1);
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.mountSendFailed), findsOneWidget);
+  });
+
   testWidgets('no STATUS within 15 s reports no reply', (tester) async {
     await tester.pumpWidget(wrap());
     glove.emitStatus(fw13);

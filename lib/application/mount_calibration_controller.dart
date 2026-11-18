@@ -40,9 +40,17 @@ class MountCalibrationController extends Notifier<MountCalibrationState> {
   /// flaky IMU bus can stretch it well past that, so allow 15 s.
   static const timeout = Duration(seconds: 15);
 
+  /// When to start READing STATUS ourselves in case NOTIFYs are not
+  /// arriving. Twice the 2 s capture: until the capture ends, the stored
+  /// STATUS value still holds the previous command's result.
+  static const pollAfter = Duration(seconds: 4);
+  static const pollEvery = Duration(seconds: 1);
+
   StreamSubscription<DeviceStatusPacket>? _sub;
   Timer? _timeout;
   Timer? _staleTimer;
+  Timer? _pollStart;
+  Timer? _poll;
 
   @override
   MountCalibrationState build() {
@@ -65,7 +73,19 @@ class MountCalibrationController extends Notifier<MountCalibrationState> {
       if (accepting) _finish(command, s.lastErrorCode ?? 0);
     });
     _timeout = Timer(timeout, () => _finish(command, null));
-    await connection.sendCommand(command);
+    _pollStart = Timer(pollAfter, () {
+      _poll = Timer.periodic(
+          pollEvery, (_) => unawaited(connection.refreshStatus().catchError((_) {})));
+    });
+    try {
+      await connection.sendCommand(command);
+    } catch (_) {
+      // Before: a failed write was silent and surfaced 15 s later as
+      // "did not answer". Say what actually happened.
+      _stop();
+      state = MountCalibrationState(
+          hand: hand, message: AppStrings.mountSendFailed);
+    }
   }
 
   void _finish(AppCommand command, int? error) {
@@ -88,6 +108,9 @@ class MountCalibrationController extends Notifier<MountCalibrationState> {
     _timeout?.cancel();
     _timeout = null;
     _staleTimer?.cancel();
+    _pollStart?.cancel();
+    _poll?.cancel();
+    _poll = null;
     unawaited(_sub?.cancel());
     _sub = null;
   }

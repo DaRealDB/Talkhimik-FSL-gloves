@@ -94,6 +94,10 @@ abstract interface class GloveConnection {
   /// characteristic.
   Future<void> sendCommand(AppCommand command, {int value = 0});
 
+  /// READs the Device Status characteristic once and pushes the result into
+  /// [deviceStatus] — a fallback for when its NOTIFYs are not arriving.
+  Future<void> refreshStatus();
+
   /// Deliberate teardown — must NOT trigger auto-reconnect.
   Future<void> disconnect();
 
