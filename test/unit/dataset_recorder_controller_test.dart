@@ -113,8 +113,8 @@ void main() {
         AppStrings.recordNeedsCalibration);
   });
 
-  test('seq gap 4 drops, gap 3 keeps; take_id increments per start press '
-      '(master §5.1)', () async {
+  test('link loss > 3 frames drops, a late sample does not; take_id '
+      'increments per start press (master §5.1)', () async {
     final c = makeContainer();
     await emitCalInfo(calInfo(3));
     await startRecording(c);
@@ -125,10 +125,15 @@ void main() {
 
     await emit(frame(10, 3));
     await recorder.sampleNow();
-    await emit(frame(14, 3)); // gap 3 → kept
+    // Timer ran late: 5 frames since the last sample, none lost → kept.
+    for (var q = 11; q <= 15; q++) {
+      await emit(frame(q, 3));
+    }
     await recorder.sampleNow();
-    await emit(frame(19, 3)); // gap 4 → dropped
+    await emit(frame(20, 3)); // 4 frames lost on the link → dropped
     await recorder.sampleNow();
+    expect(c.read(datasetRecorderControllerProvider).error,
+        AppStrings.recordLinkLoss);
 
     var s = c.read(datasetRecorderControllerProvider);
     expect(s.active[GloveHand.left]!.rows, 2);
@@ -140,9 +145,10 @@ void main() {
     await c
         .read(datasetRecorderControllerProvider.notifier)
         .startTake('B');
-    await emit(frame(20, 3));
+    await emit(frame(21, 3));
     await recorder.sampleNow();
     s = c.read(datasetRecorderControllerProvider);
+    expect(s.error, isNull); // a written row clears the skip message
     expect(s.active[GloveHand.left]!.takeId, 2);
     expect(s.active[GloveHand.left]!.rows, 3);
   });
@@ -165,6 +171,22 @@ void main() {
     final s = c.read(datasetRecorderControllerProvider);
     expect(s.active[GloveHand.left]!.rows, 1);
     expect(s.active[GloveHand.left]!.adcRail, 1);
+    expect(s.error, AppStrings.recordSensorAtLimit('pointer'));
+  });
+
+  test('a stalled glove (same frame again) writes no duplicate row',
+      () async {
+    final c = makeContainer();
+    await emitCalInfo(calInfo(3));
+    await startRecording(c);
+    final recorder = c.read(datasetRecorderControllerProvider.notifier);
+    await recorder.startTake('A');
+    await emit(frame(10, 3));
+    await recorder.sampleNow();
+    await recorder.sampleNow(); // no new frame arrived
+    final s = c.read(datasetRecorderControllerProvider);
+    expect(s.active[GloveHand.left]!.rows, 1);
+    expect(s.error, AppStrings.recordNoNewData);
   });
 
   test('a calibration change closes the session and opens a new file '

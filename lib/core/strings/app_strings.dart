@@ -178,6 +178,15 @@ class AppStrings {
   static const recordNeedsCalibration =
       'Calibrate the glove before recording (cal_id 0).';
   static const recordNeedsLabel = 'Enter a label for the take.';
+  static String recordSensorAtLimit(String finger) =>
+      'Rows are being skipped: the $finger sensor reads at its limit, '
+      'which usually means a loose or broken wire.';
+  static const recordLinkLoss =
+      'Rows are being skipped: the Bluetooth link is losing data. '
+      'Move the phone closer to the glove.';
+  static const recordNoNewData =
+      'Rows are being skipped: no new readings from the glove. '
+      'Check that it is still connected.';
   static const datasetLabel = 'Label';
   static const datasetLabelHint = 'e.g. A, KUMUSTA';
   static const datasetStartTake = 'Start take';

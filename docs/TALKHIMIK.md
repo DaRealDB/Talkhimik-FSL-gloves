@@ -285,7 +285,13 @@ seq-gap loss, trailing-second update rate, mismatch flag):
   calibrations (mount id from STATUS; null on fw 1.2.0). `cal_id == 0` blocks
   recording.
 - Drops counted, never kept: raw 0/4095 on a **valid** finger (`adcRail`),
-  wrap-safe seq gap > 3 (`seqGap`). Invalid fingers lose their columns.
+  wrap-safe seq gap > 3 (`seqGap`) between consecutive RECEIVED frames
+  (not between samples: at 20 Hz vs 5 Hz those are normally 3 apart, so a
+  late timer tick used to drop good rows). Re-sampling the same frame
+  (glove stalled) writes nothing. During a take every skip shows a plain
+  reason on the Record screen (cal_id 0, sensor at its limit, link loss,
+  no new readings); the next written row clears it. Invalid fingers lose
+  their columns.
 - Takes: each Start press increments `take_id` (new session → 1); rows only
   flow while a labeled take runs; empty label blocked. Signer id =
   participantId (FR-13) or `anon-XXXX`. Consent gate unchanged (NFR-8).
@@ -330,7 +336,7 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 
 ## 8. Testing
 
-256 tests, `flutter analyze` clean, per-phase commits.
+257 tests, `flutter analyze` clean, per-phase commits.
 
 - **Unit**: sensor-math golden vectors + seqGap wrap · codecs vs §1 ·
   wizard step/error/completion · recorder rules (cal change, cal 0 gate,

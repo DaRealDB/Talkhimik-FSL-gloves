@@ -86,6 +86,12 @@ class DatasetRecorderController extends Notifier<RecorderState> {
   final List<StreamSubscription<Object?>> _subs = [];
   final Map<GloveHand, TelemetryPacket> _latest = {};
   final Map<GloveHand, int?> _lastSampledSeq = {};
+
+  /// Link loss is measured between consecutive RECEIVED frames: at 20 Hz
+  /// telemetry vs 5 Hz sampling, sampled frames are normally 3 apart, so a
+  /// gap between samples would drop good rows whenever the timer ran late.
+  final Map<GloveHand, int> _lastRxSeq = {};
+  final Set<GloveHand> _linkLoss = {};
   final Random _random = Random();
   Timer? _sampler;
 
@@ -106,11 +112,11 @@ class DatasetRecorderController extends Notifier<RecorderState> {
     _subs.add(ref
         .watch(gloveConnectionProvider)
         .telemetry
-        .listen((t) => _latest[GloveHand.left] = t));
+        .listen((t) => _onFrame(GloveHand.left, t)));
     _subs.add(ref
         .watch(rightGloveConnectionProvider)
         .telemetry
-        .listen((t) => _latest[GloveHand.right] = t));
+        .listen((t) => _onFrame(GloveHand.right, t)));
     ref.onDispose(() {
       for (final s in _subs) {
         unawaited(s.cancel());
@@ -119,6 +125,19 @@ class DatasetRecorderController extends Notifier<RecorderState> {
     });
     unawaited(_recoverThenLoad());
     return const RecorderState();
+  }
+
+  void _onFrame(GloveHand hand, TelemetryPacket t) {
+    final prev = _lastRxSeq[hand];
+    if (prev != null && seqGap(prev, t.seq) > 3) _linkLoss.add(hand);
+    _lastRxSeq[hand] = t.seq;
+    _latest[hand] = t;
+  }
+
+  /// While a take runs, a skipped row says why (before: rows silently
+  /// stayed at 0). The next written row clears it (copyWith resets error).
+  void _skipped(String why) {
+    if (state.takeActive) state = state.copyWith(error: why);
   }
 
   Future<void> _recoverThenLoad() async {
@@ -194,7 +213,10 @@ class DatasetRecorderController extends Notifier<RecorderState> {
 
   Future<void> _sampleHand(GloveHand hand, TelemetryPacket frame) async {
     // Never record uncalibrated (cal_id 0, master §5.1).
-    if (frame.calibrationId == 0) return;
+    if (frame.calibrationId == 0) {
+      _skipped(AppStrings.recordNeedsCalibration);
+      return;
+    }
 
     final session = state.active[hand] ??
         await _openSession(hand, frame.calibrationId);
@@ -207,15 +229,20 @@ class DatasetRecorderController extends Notifier<RecorderState> {
       return;
     }
 
-    // Wrap-safe seq gap vs the last SAMPLED frame; gap > 3 → drop.
-    final lastSeq = _lastSampledSeq[hand];
-    if (lastSeq != null && seqGap(lastSeq, frame.seq) > 3) {
-      session.seqGapDrops++;
-      session.droppedFrames++;
-      _lastSampledSeq[hand] = frame.seq;
+    // The same frame again: telemetry stalled. Not new data, not a row.
+    if (_lastSampledSeq[hand] == frame.seq) {
+      _skipped(AppStrings.recordNoNewData);
       return;
     }
     _lastSampledSeq[hand] = frame.seq;
+
+    // More than 3 frames lost on the link since the last sample → drop.
+    if (_linkLoss.remove(hand)) {
+      session.seqGapDrops++;
+      session.droppedFrames++;
+      _skipped(AppStrings.recordLinkLoss);
+      return;
+    }
 
     // ADC rail (raw 0 or 4095) on any VALID finger → drop.
     for (var i = 0; i < 5; i++) {
@@ -224,6 +251,7 @@ class DatasetRecorderController extends Notifier<RecorderState> {
       if (valid && (raw == 0 || raw == 4095)) {
         session.adcRail++;
         session.droppedFrames++;
+        _skipped(AppStrings.recordSensorAtLimit(fingerNames[i]));
         return;
       }
     }
