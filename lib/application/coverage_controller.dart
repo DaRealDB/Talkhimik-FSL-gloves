@@ -39,7 +39,8 @@ class CoverageController extends Notifier<CoverageState> {
       final takeStopped = (prev?.takeActive ?? false) && !next.takeActive;
       final sessionsChanged =
           prev?.sessions.length != next.sessions.length;
-      if (takeStopped || sessionsChanged) {
+      final rowsRemoved = prev?.revision != next.revision;
+      if (takeStopped || sessionsChanged || rowsRemoved) {
         unawaited(_rebuild());
       }
     });

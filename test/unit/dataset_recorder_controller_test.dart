@@ -238,6 +238,62 @@ void main() {
     expect(sessions.single.rows, 1);
   });
 
+  test('undo removes only the last take, from the CSV and the counts',
+      () async {
+    final c = makeContainer();
+    await emitCalInfo(calInfo(3));
+    await startRecording(c);
+    final recorder = c.read(datasetRecorderControllerProvider.notifier);
+
+    await recorder.startTake('A');
+    await emit(frame(10, 3));
+    await recorder.sampleNow();
+    await emit(frame(11, 3));
+    await recorder.sampleNow();
+    await recorder.stopTake();
+    expect(c.read(datasetRecorderControllerProvider).undoLabel, 'A');
+
+    await recorder.startTake('B'); // the misinput
+    expect(c.read(datasetRecorderControllerProvider).undoLabel, '');
+    await emit(frame(12, 3));
+    await recorder.sampleNow();
+    await recorder.stopTake();
+    expect(c.read(datasetRecorderControllerProvider).undoLabel, 'B');
+
+    await recorder.undoLastTake();
+    final s = c.read(datasetRecorderControllerProvider);
+    expect(s.undoLabel, ''); // one level only
+    expect(s.active[GloveHand.left]!.rows, 2);
+    expect(s.sessions.single.rows, 2);
+    final csv = dir
+        .listSync()
+        .whereType<File>()
+        .singleWhere((f) => f.path.endsWith('.csv'))
+        .readAsLinesSync();
+    expect(csv, hasLength(3)); // header + the two A rows
+    expect(csv.skip(1).every((l) => l.contains(',A,')), isTrue);
+
+    // Coverage rebuilt from disk: B is gone, A keeps its take.
+    final index = await c.read(coverageIndexStoreProvider).rebuild();
+    expect(index.labels.containsKey('B'), isFalse);
+    expect(index.labels['A']!.takes, 1);
+  });
+
+  test('undo still works after Stop recording', () async {
+    final c = makeContainer();
+    await emitCalInfo(calInfo(3));
+    await startRecording(c);
+    final recorder = c.read(datasetRecorderControllerProvider.notifier);
+    await recorder.startTake('C');
+    await emit(frame(10, 3));
+    await recorder.sampleNow();
+    await recorder.stopTake();
+    await recorder.stop();
+
+    await recorder.undoLastTake();
+    expect(c.read(datasetRecorderControllerProvider).sessions.single.rows, 0);
+  });
+
   test('rows are only written while a take is active', () async {
     final c = makeContainer();
     await emitCalInfo(calInfo(3));

@@ -285,6 +285,11 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 - Takes: each Start press increments `take_id` (new session → 1); rows only
   flow while a labeled take runs; empty label blocked. Signer id =
   participantId (FR-13) or `anon-XXXX`. Consent gate unchanged (NFR-8).
+- **Undo last take** (button after a take ends, with a confirm): deletes
+  that take's rows from every session CSV it wrote to, rewrites the
+  sidecars and rebuilds coverage. One level; works until the app restarts.
+  Sidecars are also rewritten at every take end, so sessions are listed
+  and shareable without pressing Stop.
 - Files (app-support `talkhimik_dataset/`):
   `talkhimik_<L|R>_<session_id>_cal<cal_id>.csv` + `_sidecar.json`.
   CSV header (§ thumb columns only if valid bit0, first in each group):
@@ -315,7 +320,7 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 
 ## 8. Testing
 
-248 tests, `flutter analyze` clean, per-phase commits.
+251 tests, `flutter analyze` clean, per-phase commits.
 
 - **Unit**: sensor-math golden vectors + seqGap wrap · codecs vs §1 ·
   wizard step/error/completion · recorder rules (cal change, cal 0 gate,

@@ -159,7 +159,7 @@ class CoverageIndexStore {
         try {
           final lines = await entity.readAsLines();
           if (lines.isEmpty) continue;
-          final header = _splitCsv(lines.first);
+          final header = splitCsv(lines.first);
           final sessionCol = header.indexOf('session_id');
           final signerCol = header.indexOf('signer_id');
           final handCol = header.indexOf('hand');
@@ -170,7 +170,7 @@ class CoverageIndexStore {
 
           final takesSeen = <String>{};
           for (final line in lines.skip(1)) {
-            final fields = _splitCsv(line);
+            final fields = splitCsv(line);
             final label = fields[labelCol];
             final takeKey = '${fields[sessionCol]}|${fields[takeCol]}';
             final isNewTake = takesSeen.add('$label|$takeKey');
@@ -199,7 +199,7 @@ class CoverageIndexStore {
 
   /// Minimal RFC 4180 splitter mirroring [CsvExporter]'s quoting (quoted
   /// fields may contain commas; embedded quotes are doubled).
-  static List<String> _splitCsv(String line) {
+  static List<String> splitCsv(String line) {
     final fields = <String>[];
     final buf = StringBuffer();
     var inQuotes = false;

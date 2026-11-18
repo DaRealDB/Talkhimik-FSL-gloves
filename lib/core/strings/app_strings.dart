@@ -180,6 +180,13 @@ class AppStrings {
   static const datasetLabelHint = 'e.g. A, KUMUSTA';
   static const datasetStartTake = 'Start take';
   static const datasetStopTake = 'Stop take';
+  static String datasetUndoTake(String label) => 'Undo last take ($label)';
+  static const datasetUndoTitle = 'Remove the last take?';
+  static String datasetUndoBody(String label) =>
+      'The last "$label" take will be deleted from the dataset. '
+      'This cannot be reversed.';
+  static const datasetUndoConfirm = 'Remove';
+  static const datasetUndoKeep = 'Keep it';
   static const datasetRecording = 'Recording';
   static const datasetSessions = 'Dataset sessions';
   static const datasetShare = 'Share';

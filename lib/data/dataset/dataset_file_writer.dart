@@ -6,6 +6,7 @@ import '../../domain/models/calibration_table.dart';
 import '../../domain/models/dataset_row.dart';
 import '../../domain/models/dataset_session.dart';
 import '../../domain/models/telemetry_packet.dart';
+import 'coverage_index.dart';
 
 /// Writes the dataset files: one CSV per session (header per §5.2, appended
 /// as rows arrive so a crash never loses a take) plus the sidecar JSON per
@@ -37,6 +38,28 @@ class DatasetFileWriter {
     await file.writeAsString(
         CsvExporter.toCsv([_row(session, row)]),
         mode: FileMode.append);
+  }
+
+  /// Deletes every row of take [takeId] from [session]'s CSV (undo);
+  /// returns how many rows were removed.
+  Future<int> removeTake(DatasetSession session, int takeId) async {
+    final dir = await _dirProvider();
+    final file = File(
+        '${dir.path}/${fileNameFor(session.hand, session.sessionId, session.calibrationId, sidecar: false)}');
+    if (!await file.exists()) return 0;
+    final lines = await file.readAsLines();
+    if (lines.isEmpty) return 0;
+    final takeCol = CoverageIndexStore.splitCsv(lines.first).indexOf('take_id');
+    final kept = [
+      lines.first,
+      for (final line in lines.skip(1))
+        if (line.isNotEmpty &&
+            CoverageIndexStore.splitCsv(line)[takeCol] != '$takeId')
+          line,
+    ];
+    final removed = lines.where((l) => l.isNotEmpty).length - kept.length;
+    if (removed > 0) await file.writeAsString('${kept.join('\r\n')}\r\n');
+    return removed;
   }
 
   /// Finalizes the sidecar JSON with the final counters.

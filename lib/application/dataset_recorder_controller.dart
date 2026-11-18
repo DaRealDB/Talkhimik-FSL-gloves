@@ -26,6 +26,8 @@ class RecorderState {
     this.takeActive = false,
     this.label = '',
     this.error,
+    this.undoLabel = '',
+    this.revision = 0,
   });
 
   final RecordingPhase phase;
@@ -45,6 +47,13 @@ class RecorderState {
   /// User-facing gating message.
   final String? error;
 
+  /// Label of the last finished take that
+  /// [DatasetRecorderController.undoLastTake] can remove; '' when none.
+  final String undoLabel;
+
+  /// Bumped whenever rows are removed from disk (coverage rebuild cue).
+  final int revision;
+
   RecorderState copyWith({
     RecordingPhase? phase,
     Map<GloveHand, DatasetSession>? active,
@@ -52,6 +61,8 @@ class RecorderState {
     bool? takeActive,
     String? label,
     String? error,
+    String? undoLabel,
+    int? revision,
   }) =>
       RecorderState(
         phase: phase ?? this.phase,
@@ -60,6 +71,8 @@ class RecorderState {
         takeActive: takeActive ?? this.takeActive,
         label: label ?? this.label,
         error: error,
+        undoLabel: undoLabel ?? this.undoLabel,
+        revision: revision ?? this.revision,
       );
 }
 
@@ -80,6 +93,11 @@ class DatasetRecorderController extends Notifier<RecorderState> {
   /// take can start before the first frame opens the session.
   int _takeId = 0;
   String _takeLabel = '';
+
+  /// Sessions that received rows in the current/last take — what undo
+  /// rewrites (a take can span a calibration change → several sessions).
+  final Map<String, DatasetSession> _takeSessions = {};
+  int? _undoTakeId;
 
   @override
   RecorderState build() {
@@ -215,6 +233,7 @@ class DatasetRecorderController extends Notifier<RecorderState> {
       qualityFlag: frame.quality,
     );
     session.rows++;
+    _takeSessions[session.sessionId] = session;
     await ref.read(datasetWriterProvider).appendRow(session, row);
     state = state.copyWith(active: {...state.active, hand: session});
   }
@@ -296,20 +315,29 @@ class DatasetRecorderController extends Notifier<RecorderState> {
     }
     _takeId++;
     _takeLabel = trimmed;
+    _takeSessions.clear();
+    _undoTakeId = null;
     final active = {...state.active};
     for (final session in active.values) {
       session.takeId = _takeId;
       session.label = trimmed;
     }
     state = state.copyWith(
-        active: active, takeActive: true, label: trimmed, error: null);
+        active: active,
+        takeActive: true,
+        label: trimmed,
+        error: null,
+        undoLabel: '');
   }
 
   /// Ends the current take; rows already written stay. The sidecar is
   /// (re)written now too, so a session is listed and shareable after every
   /// take — not only after Stop, which a killed app never reaches.
   Future<void> stopTake() async {
-    state = state.copyWith(takeActive: false);
+    if (state.takeActive && _takeSessions.isNotEmpty) _undoTakeId = _takeId;
+    state = state.copyWith(
+        takeActive: false,
+        undoLabel: _undoTakeId == null ? '' : _takeLabel);
     for (final session in state.active.values) {
       await ref.read(datasetWriterProvider).closeSession(session);
     }
@@ -335,6 +363,23 @@ class DatasetRecorderController extends Notifier<RecorderState> {
     final active = {...state.active}..remove(hand);
     _lastSampledSeq.remove(hand);
     state = state.copyWith(active: active);
+  }
+
+  /// Deletes the last finished take's rows (a mislabeled or botched take)
+  /// from every session it wrote to, then rewrites their sidecars. One
+  /// level: the take before it stays.
+  Future<void> undoLastTake() async {
+    final takeId = _undoTakeId;
+    if (takeId == null || state.takeActive) return;
+    final writer = ref.read(datasetWriterProvider);
+    for (final session in _takeSessions.values) {
+      session.rows -= await writer.removeTake(session, takeId);
+      await writer.closeSession(session);
+    }
+    _takeSessions.clear();
+    _undoTakeId = null;
+    state = state.copyWith(undoLabel: '', revision: state.revision + 1);
+    await _loadSessions();
   }
 
   /// Removes a finished session's files from disk.

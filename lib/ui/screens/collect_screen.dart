@@ -60,6 +60,33 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
     await SharePlus.instance.share(ShareParams(files: files));
   }
 
+  static String _display(String label) =>
+      label == restLabel ? 'REST' : label;
+
+  Future<void> _confirmUndo(String label) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(AppStrings.datasetUndoTitle),
+        content: Text(AppStrings.datasetUndoBody(_display(label))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(AppStrings.datasetUndoKeep),
+          ),
+          FilledButton(
+            key: const Key('undo-take-confirm'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(AppStrings.datasetUndoConfirm),
+          ),
+        ],
+      ),
+    );
+    if (ok ?? false) {
+      await ref.read(datasetRecorderControllerProvider.notifier).undoLastTake();
+    }
+  }
+
   /// One coverage chip: label + take count + state icon. State is shown
   /// with an icon AND a number, never color alone (design system rule);
   /// the icon's meaning is in the Tooltip. Tapping preselects the label.
@@ -76,7 +103,7 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
         (Icons.check_circle_outline, AppStrings.coverageOk),
       CoverageLevel.good => (Icons.verified, AppStrings.coverageGood),
     };
-    final display = label == restLabel ? 'REST' : label;
+    final display = _display(label);
     return Tooltip(
       message: stateName,
       child: ActionChip(
@@ -205,6 +232,14 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
                   icon: const Icon(Icons.play_circle_outline),
                   label: const Text(AppStrings.datasetStartTake),
                   onPressed: () => recorder.startTake(_labelController.text),
+                ),
+              if (!state.takeActive && state.undoLabel.isNotEmpty)
+                TextButton.icon(
+                  key: const Key('undo-take-button'),
+                  icon: const Icon(Icons.undo),
+                  label: Text(
+                      AppStrings.datasetUndoTake(_display(state.undoLabel))),
+                  onPressed: () => _confirmUndo(state.undoLabel),
                 ),
             ],
           ),
