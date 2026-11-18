@@ -42,6 +42,11 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
 
   Future<void> _shareAll() async {
     final recorder = ref.read(datasetRecorderControllerProvider.notifier);
+    // Finalize a running recording so its sidecars exist and are shared.
+    if (ref.read(datasetRecorderControllerProvider).phase ==
+        RecordingPhase.recording) {
+      await recorder.stop();
+    }
     final files = <XFile>[];
     for (final s in ref.read(datasetRecorderControllerProvider).sessions) {
       for (final p in await recorder.pathsFor(s)) {
@@ -271,9 +276,11 @@ class _CollectScreenState extends ConsumerState<CollectScreen> {
             key: const Key('share-all-button'),
             icon: const Icon(Icons.ios_share),
             label: const Text(AppStrings.shareAll),
-            onPressed: state.sessions.isEmpty ? null : _shareAll,
+            onPressed: state.sessions.isEmpty && state.active.isEmpty
+                ? null
+                : _shareAll,
           ),
-          if (state.sessions.isEmpty) ...[
+          if (state.sessions.isEmpty && state.active.isEmpty) ...[
             const SizedBox(height: 4),
             Text(
               AppStrings.shareAllNoData,

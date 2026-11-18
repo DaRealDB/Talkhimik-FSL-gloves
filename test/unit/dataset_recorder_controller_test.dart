@@ -221,6 +221,23 @@ void main() {
         hasLength(1));
   });
 
+  test('ending a take lists the session without Stop (share-all works)',
+      () async {
+    final c = makeContainer();
+    await emitCalInfo(calInfo(3));
+    await startRecording(c);
+    final recorder = c.read(datasetRecorderControllerProvider.notifier);
+    await recorder.startTake('B');
+    await emit(frame(10, 3));
+    await recorder.sampleNow();
+    expect(c.read(datasetRecorderControllerProvider).sessions, isEmpty);
+
+    await recorder.stopTake(); // still recording — no stop()
+    final sessions = c.read(datasetRecorderControllerProvider).sessions;
+    expect(sessions, hasLength(1));
+    expect(sessions.single.rows, 1);
+  });
+
   test('rows are only written while a take is active', () async {
     final c = makeContainer();
     await emitCalInfo(calInfo(3));

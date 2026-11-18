@@ -73,12 +73,12 @@ void main() {
     expect(find.text(AppStrings.mountNotPerpendicular), findsOneWidget);
   });
 
-  testWidgets('no STATUS within 5 s reports no reply', (tester) async {
+  testWidgets('no STATUS within 15 s reports no reply', (tester) async {
     await tester.pumpWidget(wrap());
     glove.emitStatus(fw13);
     await tester.pumpAndSettle();
     await tapKey(tester, const Key('mount-left-calibrateGyro'));
-    await tester.pump(const Duration(seconds: 6));
+    await tester.pump(const Duration(seconds: 16));
     await tester.pumpAndSettle();
     expect(find.text(AppStrings.mountNoReply), findsOneWidget);
   });

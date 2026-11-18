@@ -36,8 +36,9 @@ class MountCalibrationController extends Notifier<MountCalibrationState> {
   /// STATUS packets this soon after the write may predate the command.
   static const staleWindow = Duration(milliseconds: 300);
 
-  /// No usable STATUS by then: the capture takes ~2 s, so give up at 5 s.
-  static const timeout = Duration(seconds: 5);
+  /// No usable STATUS by then. A capture takes ~2 s, but I2C retries on a
+  /// flaky IMU bus can stretch it well past that, so allow 15 s.
+  static const timeout = Duration(seconds: 15);
 
   StreamSubscription<DeviceStatusPacket>? _sub;
   Timer? _timeout;

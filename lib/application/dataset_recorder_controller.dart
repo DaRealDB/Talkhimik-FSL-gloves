@@ -305,9 +305,15 @@ class DatasetRecorderController extends Notifier<RecorderState> {
         active: active, takeActive: true, label: trimmed, error: null);
   }
 
-  /// Ends the current take; rows already written stay.
+  /// Ends the current take; rows already written stay. The sidecar is
+  /// (re)written now too, so a session is listed and shareable after every
+  /// take — not only after Stop, which a killed app never reaches.
   Future<void> stopTake() async {
     state = state.copyWith(takeActive: false);
+    for (final session in state.active.values) {
+      await ref.read(datasetWriterProvider).closeSession(session);
+    }
+    await _loadSessions();
   }
 
   /// Stops recording and finalizes every active session (CSV already
