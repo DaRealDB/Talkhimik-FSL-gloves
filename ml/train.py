@@ -426,6 +426,16 @@ def main():
     best = None  # (variant, model, mu, sigma, metrics, floor, floor_table)
     for hand in train_hands:
         hr = hand_rows[hand]
+        if len({r["session"] for r in hr}) < 3:
+            # Too few sessions for a session split (val/test would be empty):
+            # split whole TAKES instead. Takes from one sitting share glove
+            # fit and posture, so held-out accuracy is optimistic.
+            hr = [dict(r, session=f"{r['session']}#take{r['take']}")
+                  for r in hr]
+            note = (f"hand {hand}: fewer than 3 sessions - split by take; "
+                    "held-out accuracy is OPTIMISTIC (same sitting)")
+            loader_report.setdefault("split_notes", []).append(note)
+            print("WARNING: " + note)
         sessions = split_sessions(hr, args.seed)
         for variant in ("A", "B"):
             X = feature_matrix(hr, variant)
