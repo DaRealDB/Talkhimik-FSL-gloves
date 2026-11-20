@@ -21,7 +21,8 @@ import synth
 import train
 from train import (INPUT_A, MLP, REST_LABEL, confidence_floor,
                    evaluate, export_labels, export_weights,
-                   feature_matrix, split_sessions, train_mlp)
+                   feature_matrix, motion_gates, split_sessions,
+                   train_mlp)
 
 
 def _reload_model(weights_path):
@@ -47,7 +48,18 @@ def main():
         assert report["missing_sidecar"] == []
         labels = {r["label"] for r in rows}
         assert "A" in labels and REST_LABEL in labels
-        assert "J" not in labels and "Z" not in labels  # skipped
+        assert "Z" not in labels  # skipped (J is kept: motion-gated)
+
+        # --- motion gate: midway between still takes and J's motion ----
+        def take(label, t, pitches):
+            return [{"label": label, "session": "S", "take": t,
+                     "pitch": p} for p in pitches]
+        gate_rows = (take("A", 1, [0, 2, 4]) + take("B", 2, [10, 16])
+                     + take("J", 3, [0, 40, 70]) + take("J", 4, [5, 90])
+                     + take("J", 5, [7]))  # 1-row take: not measurable
+        gates = motion_gates(gate_rows)
+        assert gates == {"J": 37.0}, gates  # (p95 still 4 + min J 70) / 2
+        assert motion_gates(take("A", 1, [0, 3])) == {}
         assert report["low_take_labels_dropped"] == {}
 
         # CSV without its sidecar -> excluded + reported

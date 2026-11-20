@@ -99,11 +99,11 @@ void main() {
     expect(find.text(AppStrings.coverageTitle), findsOneWidget);
     expect(find.text('A · 0'), findsOneWidget);
     expect(find.text('REST · 0'), findsOneWidget);
-    // J and Z exist as chips (marked later, not excluded from the grid).
+    // J and Z exist as chips (Z marked later; J now counts, motion-gated).
     expect(find.text('J · 0'), findsOneWidget);
     expect(find.text('Z · 0'), findsOneWidget);
     expect(find.text(AppStrings.coverageHint), findsOneWidget);
-    expect(find.textContaining('of 27 letters ready'), findsOneWidget);
+    expect(find.textContaining('of 28 letters ready'), findsOneWidget);
   });
 
   testWidgets('tapping a coverage chip preselects the label and the REST '

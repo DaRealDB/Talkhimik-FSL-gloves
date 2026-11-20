@@ -106,16 +106,16 @@ void main() {
     expect(rebuilt.labels['A']!.takes, 1);
   });
 
-  test('thresholds: <5 needs data, 5–9 ok, >=10 good, J and Z later', () {
+  test('thresholds: <5 needs data, 5–9 ok, >=10 good, Z later', () {
     expect(coverageLevelFor('A', 4), CoverageLevel.needsData);
     expect(coverageLevelFor('A', 5), CoverageLevel.ok);
     expect(coverageLevelFor('A', 9), CoverageLevel.ok);
     expect(coverageLevelFor('A', 10), CoverageLevel.good);
-    expect(coverageLevelFor('J', 100), CoverageLevel.later);
+    expect(coverageLevelFor('J', 10), CoverageLevel.good); // motion-gated
     expect(coverageLevelFor('Z', 0), CoverageLevel.later);
   });
 
-  test('readyCount excludes the later letters J and Z', () {
+  test('readyCount excludes the later letter Z', () {
     final index = CoverageIndex(
       labels: {
         'A': LabelCoverage(takes: 12, rows: 12, hands: {}, calibrationIds: {}, signers: {}),
@@ -127,8 +127,8 @@ void main() {
       updatedAt: DateTime.now(),
     );
     const targets = ['A', 'B', 'C', 'J', 'Z', '_rest'];
-    // A (good) + B (ok) ready; J excluded despite 100 takes; C, Z, _rest not.
-    expect(index.readyCount(targets), 2);
+    // A (good) + B (ok) + J ready; C, Z (later), _rest not.
+    expect(index.readyCount(targets), 3);
   });
 
   test('index.json round-trips through JSON', () {

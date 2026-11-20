@@ -3,8 +3,9 @@ import 'dart:io';
 
 /// Coverage targets and thresholds — THE constants for the dataset
 /// coverage card (C2). "X of Y letters ready" counts labels at
-/// [okAtOrAbove] takes or more; J and Z are excluded (dynamic letters —
-/// they need motion, not static takes) and shown as "later".
+/// [okAtOrAbove] takes or more; Z is excluded (dynamic letter, no motion
+/// gate yet) and shown as "later". J trains like any letter (motion-gated
+/// in the app), so it counts.
 class CoverageThresholds {
   CoverageThresholds._();
 
@@ -15,7 +16,7 @@ class CoverageThresholds {
   static const int goodAtOrAbove = 10;
 
   /// Letters excluded from the needs-data targets.
-  static const Set<String> laterLabels = {'J', 'Z'};
+  static const Set<String> laterLabels = {'Z'};
 }
 
 /// The special REST label as stored in CSV files.

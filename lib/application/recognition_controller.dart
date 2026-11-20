@@ -7,6 +7,7 @@ import '../domain/classifier/classifier_factory.dart';
 import '../domain/classifier/gesture_classifier.dart';
 import '../domain/classifier/hand_frame.dart';
 import '../domain/classifier/model_bundle.dart';
+import '../domain/classifier/motion_gate.dart';
 import '../domain/classifier/recognition_constants.dart';
 import '../domain/classifier/refuse_gate.dart';
 import '../domain/classifier/stabilizer.dart';
@@ -132,6 +133,7 @@ class RecognitionState {
 class RecognitionController extends Notifier<RecognitionState> {
   final List<StreamSubscription<Object?>> _subs = [];
   final Stabilizer _stabilizer = Stabilizer();
+  final MotionGate _motion = MotionGate();
   final ClassifierFactory _factory = const ClassifierFactory();
   final Map<GloveHand, (ModelBundle?, GestureClassifier)> _classifiers = {};
   Map<String, int> _wordIdByLetter = const {};
@@ -183,6 +185,7 @@ class RecognitionController extends Notifier<RecognitionState> {
 
   void _onDisconnect() {
     _stabilizer.reset();
+    _motion.reset();
     state = state.copyWith(
       pausedForLabelPackets: false,
       activeHand: null,
@@ -250,6 +253,7 @@ class RecognitionController extends Notifier<RecognitionState> {
       return;
     }
 
+    _motion.add(now, frame.pitchDeg);
     final prediction = classifier.classifyFrame(frame);
     // Trained-model semantics: below the confidence floor or the REST
     // class counts as neutral (a release), never an emission (concept
@@ -261,7 +265,11 @@ class RecognitionController extends Notifier<RecognitionState> {
       final rest = classifier.restLabel;
       final belowFloor = floor != null && prediction.confidence < floor;
       final isRest = rest != null && prediction.label == rest;
-      stabilizerLabel = (belowFloor || isRest) ? null : prediction.label;
+      // A motion letter (J) held still is not that letter: neutral.
+      final still = !_motion.allows(
+          prediction.label, bundle?.labels.motionPitchSpan ?? const {});
+      stabilizerLabel =
+          (belowFloor || isRest || still) ? null : prediction.label;
     }
     final result = _stabilizer.addFrame(stabilizerLabel, now);
     state = state.copyWith(

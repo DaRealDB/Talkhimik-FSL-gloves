@@ -32,10 +32,11 @@ TelemetryPacket fistFrame(int seq,
 /// A hand-crafted 2-class model (A vs _rest): class score tracks the
 /// angle sum — a fist (sum ~330) is 'A', a relaxed pose (sum ~85) is
 /// '_rest', both with confidence ~1.0. Floor is parameterized per test.
-String testBundleJson({required double floor, String hand = 'L'}) {
+String testBundleJson(
+    {required double floor, String hand = 'L', String motion = ''}) {
   final labels = '''
 {
-  "version": 1, "hand": "$hand", "rest_class": "_rest",
+  "version": 1, "hand": "$hand", "rest_class": "_rest", $motion
   "input_spec": {"order": ["ang_thumb","ang_pointer","ang_middle",
     "ang_ring","ang_pinky"], "units": 5, "variant": "A"},
   "classes": [
@@ -64,8 +65,10 @@ const testWeightsJson = '''
 }
 ''';
 
-ModelBundle testBundle({double floor = 0.5, String hand = 'L'}) =>
-    ModelBundle.assemble(testBundleJson(floor: floor, hand: hand),
+ModelBundle testBundle(
+        {double floor = 0.5, String hand = 'L', String motion = ''}) =>
+    ModelBundle.assemble(
+        testBundleJson(floor: floor, hand: hand, motion: motion),
         testWeightsJson)!;
 
 void main() {
@@ -389,5 +392,45 @@ void main() {
     final recog = c.read(recognitionControllerProvider);
     expect(recog.classifier, 'phone-threshold');
     expect(recog.modelVersion, 'stand-in-v1');
+  });
+
+  group('motion letters (here A stands in for J)', () {
+    const motion =
+        '"motion_labels": {"A": {"pitch_span_deg": 30, "window_ms": 1500}},';
+
+    TelemetryPacket fistAt(int seq, double pitch) => TelemetryPacket(
+          hand: GloveHand.left,
+          seq: seq,
+          angles: const [50, 70, 70, 70, 70],
+          rollDeg: 0,
+          pitchDeg: pitch,
+          yawDeg: 0,
+          rawAdc: const [100, 200, 300, 400, 500],
+          calibrationId: 3,
+          quality: 0x1F,
+          receivedAt: DateTime.now(),
+        );
+
+    Future<int> emissions(List<double> pitches) async {
+      final (c, left, _, _, _, _) =
+          makeContainer(bundle: testBundle(motion: motion));
+      c.read(transcriptControllerProvider);
+      await pump(c);
+      await pump(c);
+      left.emitStatus(const DeviceStatusPacket(uncalibrated: false));
+      for (var i = 0; i < pitches.length; i++) {
+        left.emitTelemetry(fistAt(i, pitches[i]));
+        await pump(c);
+      }
+      return c.read(transcriptControllerProvider).entries.length;
+    }
+
+    test('the handshape held still is not emitted', () async {
+      expect(await emissions(List.filled(25, 0)), 0);
+    });
+
+    test('the handshape with the pitch sweep is emitted once', () async {
+      expect(await emissions([0, 0, 0, for (var i = 0; i < 22; i++) 60]), 1);
+    });
   });
 }

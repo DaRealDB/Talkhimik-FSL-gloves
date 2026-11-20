@@ -19,7 +19,8 @@ import zlib
 
 import numpy as np
 
-from load_dataset import FINGERS, REST_LABEL, load_dataset, write_clean_csv
+from load_dataset import (FINGERS, MOTION_LABELS, REST_LABEL, load_dataset,
+                          write_clean_csv)
 
 # FSL word_id contract — mirrors lib/domain/vocab/fsl_vocabulary.dart.
 # Changing ids in the app requires changing this table too.
@@ -42,6 +43,31 @@ MIN_LABELS_PER_HAND = 3
 INPUT_A = [f"ang_{f}" for f in FINGERS]
 INPUT_B = INPUT_A + ["roll", "pitch"]
 VARIANTS = {"A": INPUT_A, "B": INPUT_B}
+
+MOTION_WINDOW_MS = 1500     # the app looks back this far for the motion
+DEFAULT_MOTION_SPAN = 40.0  # only when no take has 2+ rows to measure
+
+
+def motion_gates(rows):
+    """Per motion label present: the pitch change (deg) the app must see
+    within MOTION_WINDOW_MS before emitting it. Midway between still takes
+    (95th percentile span, so one fidgety REST take cannot raise it) and
+    the motion label's smallest take span. Pitch, not roll (wraps at
+    +/-180) or yaw (drifts)."""
+    pitches = {}
+    for r in rows:
+        pitches.setdefault((r["label"], r["session"], r["take"]),
+                           []).append(r["pitch"])
+    spans = {k: max(v) - min(v) for k, v in pitches.items() if len(v) >= 2}
+    still = sorted(s for (l, _, _), s in spans.items()
+                   if l not in MOTION_LABELS)
+    still_hi = still[int(0.95 * (len(still) - 1))] if still else 0.0
+    gates = {}
+    for label in sorted({r["label"] for r in rows} & MOTION_LABELS):
+        moving = [s for (l, _, _), s in spans.items() if l == label]
+        gates[label] = (round((still_hi + min(moving)) / 2, 1) if moving
+                        else DEFAULT_MOTION_SPAN)
+    return gates
 
 
 # ---------------------------------------------------------------- model
@@ -321,7 +347,7 @@ def export_weights(model, mu, sigma, out_path, variant):
 
 
 def export_labels(out_path, hand, variant, classes, floor, metrics,
-                  trained_on):
+                  trained_on, motion=None):
     # The confusion matrix ships as CSV/PNG; keep labels.json JSON-safe.
     json_metrics = {k: v for k, v in metrics.items() if k != "confusion"}
     payload = {
@@ -337,6 +363,9 @@ def export_labels(out_path, hand, variant, classes, floor, metrics,
         "confidence_floor": floor if floor is not None else 0.95,
         "floor_precision_95": floor is not None,
         "rest_class": REST_LABEL,
+        "motion_labels": {l: {"pitch_span_deg": v,
+                              "window_ms": MOTION_WINDOW_MS}
+                          for l, v in (motion or {}).items()},
         "trained_on": trained_on,
         "metrics": json_metrics,
         "created_at": None,  # filled below (JSON-safe)
@@ -497,9 +526,11 @@ def main():
 
     export_weights(model, mu, sigma,
                    os.path.join(args.out, "weights.json"), variant)
+    motion = motion_gates(hand_rows[canonical])
+    loader_report["motion_gates_pitch_deg"] = motion
     export_labels(os.path.join(args.out, "labels.json"),
                   canonical, variant, model.classes, floor, metrics,
-                  trained_on)
+                  trained_on, motion)
     write_confusion_csv(metrics["confusion"], metrics["classes"],
                         os.path.join(args.out, "confusion_matrix.csv"))
     write_confusion_png(metrics["confusion"], metrics["classes"],

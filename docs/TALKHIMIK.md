@@ -336,7 +336,7 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 
 ## 8. Testing
 
-257 tests, `flutter analyze` clean, per-phase commits.
+262 tests, `flutter analyze` clean, per-phase commits.
 
 - **Unit**: sensor-math golden vectors + seqGap wrap · codecs vs §1 ·
   wizard step/error/completion · recorder rules (cal change, cal 0 gate,
@@ -525,7 +525,8 @@ telemetry (20 Hz) ── signing hand (Settings → Recognition)
   CSV/sidecar formats are untouched.
 - The Collect screen shows a coverage card: a chip grid of 28 letters +
   REST with take counts and icon states — <5 takes "needs data",
-  5–9 "ok", ≥10 "good"; J and Z are marked "later" (dynamic letters).
+  5–9 "ok", ≥10 "good"; Z is marked "later" (dynamic, no motion gate
+  yet). J counts like any letter (motion-gated, see the pipeline facts).
   Constants live in `lib/data/dataset/coverage_index.dart`. Tapping a
   chip preselects that label for recording.
 - REST is a first-class take: picker item "REST — hand relaxed", stored
@@ -548,7 +549,14 @@ telemetry (20 Hz) ── signing hand (Settings → Recognition)
 
 Pipeline facts: validation and every drop decision are reported
 (missing sidecar, cal mismatch, invalid-finger sessions, bad-quality
-rows, <5-take labels, J/Z skipped); splits are grouped by SESSION
+rows, <5-take labels, Z skipped); **J is motion-gated**: its handshape
+trains like any letter, and `motion_gates()` writes `labels.json`
+`motion_labels: {"J": {"pitch_span_deg": x, "window_ms": 1500}}` with x
+midway between still takes (95th-percentile pitch span) and J's smallest
+take span. The app (`MotionGate`, recognition controller) emits J only
+while pitch changed ≥ x in the last 1.5 s; a still J handshape is neutral.
+Pitch, because roll wraps at ±180 and yaw drifts. A hand with < 3 sessions
+splits by take instead (report flags it optimistic); splits are grouped by SESSION
 (~70/15/15, per-label coverage — never random rows) with
 leave-one-signer-out when ≥ 2 signers (one signer → the report says
 cross-person generalization is untested); two input variants are

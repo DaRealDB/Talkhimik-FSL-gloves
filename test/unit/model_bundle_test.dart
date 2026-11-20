@@ -67,4 +67,12 @@ void main() {
     expect(spec.trainedOnSummary, contains('abc123'));
     expect(spec.trainedOnSummary, contains('floor 0.7'));
   });
+
+  test('motion_labels parse into per-letter pitch spans; absent = none', () {
+    expect(LabelsSpec.parse(labelsJson)!.motionPitchSpan, isEmpty);
+    final withMotion = labelsJson.replaceFirst('"rest_class": "_rest",',
+        '"rest_class": "_rest", "motion_labels": '
+        '{"J": {"pitch_span_deg": 35.5, "window_ms": 1500}},');
+    expect(LabelsSpec.parse(withMotion)!.motionPitchSpan, {'J': 35.5});
+  });
 }

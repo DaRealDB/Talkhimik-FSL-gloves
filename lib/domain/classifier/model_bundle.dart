@@ -23,6 +23,7 @@ class LabelsSpec {
     required this.floorPrecision95,
     required this.restClass,
     required this.datasetHash,
+    this.motionPitchSpan = const {},
   });
 
   final int version;
@@ -34,6 +35,10 @@ class LabelsSpec {
   final bool floorPrecision95;
   final String restClass;
   final String datasetHash;
+
+  /// Motion letters (labels.json `motion_labels`): label → the pitch change
+  /// in degrees required before it may be emitted (see MotionGate).
+  final Map<String, double> motionPitchSpan;
 
   /// One-line trained-on summary for the debug panel.
   String get trainedOnSummary =>
@@ -67,6 +72,14 @@ class LabelsSpec {
       final hash = trainedOn is Map<String, Object?>
           ? (trainedOn['dataset_hash'] as String? ?? 'unknown')
           : 'unknown';
+      final motion = <String, double>{};
+      final rawMotion = root['motion_labels'];
+      if (rawMotion is Map<String, Object?>) {
+        for (final e in rawMotion.entries) {
+          final span = (e.value as Map?)?['pitch_span_deg'];
+          if (span is num) motion[e.key] = span.toDouble();
+        }
+      }
       return LabelsSpec(
         version: (root['version'] as num?)?.toInt() ?? 1,
         hand: root['hand'] as String? ?? '',
@@ -77,6 +90,7 @@ class LabelsSpec {
         floorPrecision95: root['floor_precision_95'] == true,
         restClass: root['rest_class'] as String? ?? '_rest',
         datasetHash: hash,
+        motionPitchSpan: motion,
       );
     } catch (_) {
       return null;
