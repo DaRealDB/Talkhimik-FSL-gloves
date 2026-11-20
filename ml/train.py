@@ -477,7 +477,10 @@ def main():
         loso = {}
         for left_out in signers:
             tr = [r for r in hand_rows[hand] if r["signer"] != left_out]
-            te = [r for r in hand_rows[hand] if r["signer"] == left_out]
+            seen = {r["label"] for r in tr}
+            # Only labels the other signers also recorded can be scored.
+            te = [r for r in hand_rows[hand]
+                  if r["signer"] == left_out and r["label"] in seen]
             if not tr or not te:
                 continue
             Xt = feature_matrix(tr, variant)
