@@ -33,7 +33,7 @@ the next firmware stage (planned).
 | App tests | `flutter_test` · `flutter_lints` ^6.0.0 |
 | **Glove hardware** | 2 × Seeed XIAO ESP32S3 · 5 flex sensors (voltage divider → 12-bit ADC) · MPU-6050/6500 IMU (I²C, mounted upside down) · vibration motor |
 | **Firmware** (`talkhimik-ble`) | Arduino (C++), Seeed ESP32 board package, board XIAO_ESP32S3 · NimBLE-Arduino 2.x (GATT server) · MPU6050_light (IMU) · `Preferences` (NVS: calibration, hand, mount) |
-| **Web dashboard** | Single-file HTML + JS (`web/index.html`), Web Bluetooth, Chrome/Edge, served with `python -m http.server` |
+| **Web dashboard** | Single-file HTML + JS (`talkhimik-ble/web/index.html`), Web Bluetooth, Chrome/Edge, served with `python -m http.server` |
 | **ML pipeline** (`ml/`) | Python · numpy ≥ 1.26 (loader, splits, MLP, exports) · TensorFlow ≥ 2.16 optional (only for `.tflite` export) · on the phone the model runs as a pure-Dart MLP (§13, §15) |
 
 ---
