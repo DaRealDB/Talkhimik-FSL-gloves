@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TALKHIMIK — BLE Glove Telemetry</title>
+<style>
+  :root {
+    --bg: #0f1720; --card: #18222e; --line: #263445; --text: #e6edf3;
+    --muted: #8aa0b4; --accent: #4cc2ff; --ok: #34d399; --bad: #f87171; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #1b2a3a, var(--bg));
+    color: var(--text);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px 16px 48px;
+  }
+  h1 { font-size: 22px; margin: 0; letter-spacing: .5px; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13px; margin: 4px 0 20px; }
+  .wrap { width: 100%; max-width: 1100px; }
+  .banner {
+    background: #3a2518; border: 1px solid #7c4a2d; color: #ffd9b0;
+    border-radius: 12px; padding: 12px 16px; font-size: 13px; line-height: 1.5;
+    margin-bottom: 16px;
+  }
+  .hidden { display: none; }
+  .bar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;
+  }
+  .bar .hint { color: var(--muted); flex: 1; min-width: 200px; }
+  button {
+    background: var(--accent); color: #062031; border: 0;
+    border-radius: 8px; padding: 8px 14px; font-weight: 600;
+    cursor: pointer; font-size: 13px;
+  }
+  button:hover { filter: brightness(1.1); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.small { padding: 6px 10px; font-size: 12px; }
+  button.ghost { background: #223041; color: var(--text); font-weight: 500; }
+  .sim label { color: var(--muted); display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 16px; margin-bottom: 16px;
+  }
+  .card h2 {
+    margin: 0 0 12px; font-size: 13px; color: var(--muted);
+    font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .state { font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 600; }
+  .state .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-right: 6px; }
+  .state.on .dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .state.wait .dot { background: var(--warn); }
+  .state.sim .dot { background: var(--accent); }
+  svg { width: 100%; height: auto; display: block; }
+  .rows { margin-top: 8px; }
+  .frow { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; }
+  .frow .fn { width: 64px; color: var(--muted); text-transform: capitalize; }
+  .frow .track { flex: 1; height: 8px; border-radius: 6px; background: #101820; border: 1px solid var(--line); overflow: hidden; }
+  .frow .fill { height: 100%; width: 0%; background: linear-gradient(90deg, #34d399, #fbbf24, #f87171); transition: width .15s linear; }
+  .frow .fv { width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+  .imu { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .imutile { flex: 1; min-width: 70px; background: #101820; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .imutile .l { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .imutile .v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .gest { display: flex; gap: 12px; align-items: center; margin-top: 12px; background: #101820; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .letterBig { font-size: 30px; font-weight: 800; color: var(--accent); min-width: 52px; text-align: center; }
+  .gestName { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .wizRow { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 10px; }
+  .wizRow label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  .note { color: var(--muted); font-size: 12px; margin-top: 10px; line-height: 1.6; }
+  textarea {
+    width: 100%; min-height: 240px; background: #101820; color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+    font-family: Consolas, monospace; font-size: 12px; resize: vertical;
+  }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .toolbar input[type=text] { flex: 1; min-width: 180px; background: #101820; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+  button.rec.on { background: var(--bad); color: #fff; }
+  .detail { margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>TALKHIMIK <span>BLE Glove Telemetry</span></h1>
+  <p class="sub">FSL Smart Glove — 2 hands × 5 flex + IMU over BLE · Web Bluetooth dashboard</p>
+
+  <div id="banner" class="banner hidden">
+    Web Bluetooth is unavailable here. Use <b>Chrome or Edge on desktop (or Android)</b>,
+    served over <b>https:// or http://localhost</b>. iOS Safari is not supported.
+    You can still use the <b>simulate</b> toggle to test the UI without hardware.
+  </div>
+
+  <div class="bar">
+    <span class="hint">Click either button, pick a glove from the chooser — it lands in its own slot (left/right detected from the device name).</span>
+    <button id="btnL">Connect Left Glove</button>
+    <button id="btnR">Connect Right Glove</button>
+    <label class="sim"><input type="checkbox" id="simToggle" /> simulate</label>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Left hand <span class="state" id="stateL"><span class="dot"></span>disconnected</span></h2>
+      <svg id="svgL" viewBox="0 0 430 500" role="img" aria-label="Left hand"></svg>
+      <div class="rows" id="rowsL"></div>
+      <div class="imu" id="imuL"></div>
+      <div class="gest">
+        <div class="letterBig" id="gestL">—</div>
+        <div class="gestName" id="nameL">no gesture</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Right hand <span class="state" id="stateR"><span class="dot"></span>disconnected</span></h2>
+      <svg id="svgR" viewBox="0 0 430 500" role="img" aria-label="Right hand"></svg>
+      <div class="rows" id="rowsR"></div>
+      <div class="imu" id="imuR"></div>
+      <div class="gest">
+        <div class="letterBig" id="gestR">—</div>
+        <div class="gestName" id="nameR">no gesture</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Calibration wizard</h2>
+    <div class="wizRow">
+      <label><input type="radio" name="wizHand" id="wizL" checked /> Left glove</label>
+      <label><input type="radio" name="wizHand" id="wizR" /> Right glove</label>
+    </div>
+    <div class="wizRow">
+      <button id="wizStart" class="ghost">Start calibration</button>
+      <button id="wizCapture" disabled>Capture</button>
+      <button id="wizCancel" class="ghost" disabled>Cancel</button>
+    </div>
+    <p class="note" id="wizStatus">Idle. Start walks thumb → pointer → middle → ring → pinky, flat then 90° each.</p>
+    <p class="note" id="wizExtra"></p>
+  </div>
+
+  <div class="card">
+    <h2>IMU mount calibration (glove selected above)</h2>
+    <ol class="note">
+      <li><b>Calibrate Gyro</b>: set the glove down or hold it completely still for 2 s.</li>
+      <li><b>Capture Pose 1</b>: palm down, back of hand up, fingers forward, hand level. Hold still 2 s.</li>
+      <li><b>Capture Pose 2</b>: fingers pointing straight up. Hold still 2 s. The glove then solves and saves R_MOUNT for this hand.</li>
+    </ol>
+    <div class="wizRow">
+      <button id="imuGyro" class="ghost">Calibrate Gyro</button>
+      <button id="imuPose1">Capture Pose 1</button>
+      <button id="imuPose2">Capture Pose 2</button>
+    </div>
+    <p class="note" id="imuStatus"></p>
+    <p class="note">Live check: hold each pose and look at its row. Gravity (az) is estimated from roll and pitch
+      because the telemetry packet carries no raw accel. The motion rows check the last 3 s and the still row checks the last 10 s.</p>
+    <table class="note" id="imuCheck" style="width:100%; border-collapse:collapse;"></table>
+  </div>
+
+  <div class="card">
+    <h2>Gesture classifier rules (editable)</h2>
+    <p class="note">Threshold rules per hand, evaluated against the smoothed finger angles.
+    <code>min</code>/<code>max</code> bound specific fingers (<code>t</code>=thumb, <code>p</code>=pointer,
+    <code>m</code>=middle, <code>r</code>=ring, <code>y</code>=pinky). First match wins.</p>
+    <div class="detail">
+      <textarea id="rulesText" spellcheck="false"></textarea>
+      <div class="wizRow">
+        <button id="applyRules">Apply rules</button>
+        <button id="resetRules" class="ghost">Reset to defaults</button>
+        <span id="rulesMsg" class="note" style="margin:0;"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Dataset recorder — Talkhimik Gesture Dataset</h2>
+    <div class="toolbar">
+      <input id="labelInput" type="text" list="labelSuggest" placeholder="Gesture label (e.g. C)" />
+      <datalist id="labelSuggest">
+        <option value="OPEN"></option><option value="C"></option><option value="FIST"></option>
+        <option value="D-G-L"></option><option value="V"></option><option value="U-K-P"></option>
+        <option value="W"></option><option value="I"></option><option value="Y"></option>
+        <option value="B"></option><option value="F"></option>
+      </datalist>
+      <input id="signerInput" type="text" placeholder="Signer ID (anonymous, auto if blank)" />
+      <button id="recBtn">● Start recording</button>
+      <button id="exportBtn" class="ghost">Export CSV + sidecar</button>
+      <button id="clearBtn" class="ghost">Clear</button>
+    </div>
+    <p class="note" id="recStatus">No recording yet. Enter a label, press Start, perform the sign repeatedly, then Stop.
+      Samples are logged every 200 ms (5 Hz) and tied to the glove's calibration_id and mount_calibration_id — a change to either
+      starts a new session automatically, so no file ever mixes calibrations.</p>
+  </div>
+</div>
+
+<script>
+/* ============================== shared config ============================== */
+// UUIDs and packet layouts — MUST match firmware/glove-esp32/config.h exactly.
+const CONFIG = {
+  service:    'd84f9c2e-6b1a-4e57-9f3d-2a8c7e5b1f04',
+  telemetry:  '7a3e1b9c-2d4f-48a6-b7e2-5c9d0f8a3b61',
+  command:    '3f8d2a6b-9c4e-4d7f-a1e3-6b5c8d0e2f49',
+  status:     'c2b6e8d4-1a7f-4c3e-9d5b-0f2a6e8c4d73',
+  calInfo:    'a1f2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d',
+  namePrefix: 'TALKHIMIK'
+};
+const PKT = {
+  TELE_LEN: 29,            // offsets (little-endian):
+  tHand: 0,                //   0    u8  hand (0=L, 1=R)
+  tSeq: 1,                 //   1..2 u16 seq
+  tFlex: 3,                //   3..7 u8  flex[5]: thumb, pointer, middle, ring, pinky
+  tRoll: 8, tPitch: 10, tYaw: 12,   // i16 deg*10 each
+  tRaw: 14,                //   14..23 u16 raw ADC[5] (same finger order)
+  tCalId: 24,              //   24..27 u32 calibration_id (0 = never calibrated)
+  tQuality: 28,            //   28    u8 quality (bit0..4 valid, bit5 weak span)
+  STATUS_LEN: 5,           // offsets:
+  sMode: 0,                //   0 u8 mode (0 streaming, 1 calibrating)
+  sStep: 1,                //   1 u8 step (0 idle; 1..10)
+  sBattery: 2,             //   2 u8 battery % (0xFF unknown)
+  sFlags: 3,               //   3 u8 flags (bit0 flex uncal, bit1 mount uncal, bit2 gyro uncal)
+  sError: 4,               //   4 u8 error (0 none, 1 bad capture, 2 unknown cmd,
+                            //                3 span too small, 4 resistance fault, 5..10 IMU)
+  sMountId: 5,             //   5..8 u32 mount_calibration_id (fw >= 1.3.0; absent = 5-byte STATUS)
+  CAL_LEN: 104,            // CAL_INFO offsets (little-endian):
+  cValid: 0,               //   0    u8 valid mask (bit0..4)
+  cWeak: 1,                //   1    u8 weak mask (bit0..4)
+  cCalId: 2,               //   2..5 u32 calibration_id
+  cFlatOhm: 6,             //   6..25  float flat_ohm[5]
+  cBentOhm: 26,            //   26..45 float bent90_ohm[5]
+  cFlatAdc: 46,            //   46..55 u16 flat_adc[5]
+  cBentAdc: 56,            //   56..65 u16 bent90_adc[5]
+  cRdiv: 66,               //   66..85 float R_DIV[5]
+  cSpan: 86,               //   86..95 u16 span_counts[5]
+  cFwVer: 96               //   96..103 u8 fw_version[8] (ASCII, zero-padded)
+};
+const CMD = { START: 0x01, FLAT: 0x02, BEND90: 0x03, CANCEL: 0x04,
+              SET_RATE: 0x05, ZERO_YAW: 0x06, SET_HAND: 0x07, VIBRATE: 0x08,
+              MOUNT_POSE1: 0x09, MOUNT_POSE2: 0x0A, CAL_GYRO: 0x0B };
+const FINGERS = ['thumb', 'pointer', 'middle', 'ring', 'pinky'];
+const UNKNOWN_BATTERY = 0xFF;
+const SEQ_GAP_MAX = 3;     // telemetry seq jump beyond this drops the recording frame
+const $ = id => document.getElementById(id);
+
+/* ============================ per-hand state =============================== */
+function newHand(id, label) {
+  return {
+    id, label,
+    device: null, connected: false, connecting: false, retry: 0, timer: null,
+    teleChar: null, cmdChar: null, statusChar: null, calChar: null,
+    lastSeq: null, total: 0, lost: 0, lastAt: 0, recent: [], lastGap: 1,
+    angles: { thumb: 0, pointer: 0, middle: 0, ring: 0, pinky: 0 },
+    raw: [0, 0, 0, 0, 0],
+    calId: 0, validMask: 0, weakMask: 0, quality: 0,
+    cal: null,               // parsed CAL_INFO table (see parseCalInfo)
+    fwVersion: '',
+    imu: { roll: 0, pitch: 0, yaw: 0 },
+    status: { mode: 0, step: 0, battery: UNKNOWN_BATTERY, flags: 0, error: 0, mountId: 0, known: false },
+    imuHist: [],             // {t, roll, pitch, yaw} for the last ~10 s (live IMU check)
+    predRing: []
+  };
+}
+const HANDS = { L: newHand('L', 'Left'), R: newHand('R', 'Right') };
+const bleAvailable = !!(navigator.bluetooth && window.isSecureContext);
+if (!bleAvailable) $('banner').classList.remove('hidden');
+
+/* ============================== BLE ingestion ============================== */
+function ingestTelemetry(hand, dv) {
+  if (dv.byteLength < PKT.TELE_LEN) return;
+  const seq = dv.getUint16(PKT.tSeq, true);
+  if (hand.lastSeq !== null) {
+    const gap = (seq - hand.lastSeq) & 0xFFFF;   // wrap-aware
+    hand.lastGap = (gap > 0 && gap < 0x8000) ? gap : 1;
+    if (gap > 1 && gap < 0x8000) hand.lost += gap - 1;
+  }
+  hand.lastSeq = seq;
+  hand.total++;
+  FINGERS.forEach((f, i) => { hand.angles[f] = dv.getUint8(PKT.tFlex + i); });
+  FINGERS.forEach((f, i) => { hand.raw[i] = dv.getUint16(PKT.tRaw + i * 2, true); });
+  hand.calId = dv.getUint32(PKT.tCalId, true);
+  hand.quality = dv.getUint8(PKT.tQuality);
+  hand.validMask = hand.quality & 0x1F;
+  hand.imu.roll  = dv.getInt16(PKT.tRoll,  true) / 10;
+  hand.imu.pitch = dv.getInt16(PKT.tPitch, true) / 10;
+  hand.imu.yaw   = dv.getInt16(PKT.tYaw,   true) / 10;
+  hand.lastAt = performance.now();
+  hand.imuHist.push({ t: hand.lastAt, roll: hand.imu.roll, pitch: hand.imu.pitch, yaw: hand.imu.yaw });
+  while (hand.imuHist.length && hand.lastAt - hand.imuHist[0].t > 10500) hand.imuHist.shift();
+  hand.recent.push(hand.lastAt);
+  while (hand.recent.length && hand.lastAt - hand.recent[0] > 1000) hand.recent.shift();
+}
+
+function parseCalInfo(hand, dv) {
+  if (!dv || dv.byteLength < PKT.CAL_LEN) return;
+  const cal = {
+    validMask: dv.getUint8(PKT.cValid),
+    weakMask: dv.getUint8(PKT.cWeak),
+    calId: dv.getUint32(PKT.cCalId, true),
+    flat: [], bent: [], flatAdc: [], bentAdc: [], rdiv: [], span: []
+  };
+  for (let i = 0; i < 5; i++) {
+    cal.flat.push(dv.getFloat32(PKT.cFlatOhm + i * 4, true));
+    cal.bent.push(dv.getFloat32(PKT.cBentOhm + i * 4, true));
+    cal.flatAdc.push(dv.getUint16(PKT.cFlatAdc + i * 2, true));
+    cal.bentAdc.push(dv.getUint16(PKT.cBentAdc + i * 2, true));
+    cal.rdiv.push(dv.getFloat32(PKT.cRdiv + i * 4, true));
+    cal.span.push(dv.getUint16(PKT.cSpan + i * 2, true));
+  }
+  cal.fwVersion = String.fromCharCode(
+    ...new Uint8Array(dv.buffer, dv.byteOffset + PKT.cFwVer, 8)).replace(/\0+$/, '');
+  hand.cal = cal;
+  hand.fwVersion = cal.fwVersion;
+}
+
+function ingestStatus(hand, dv) {
+  if (dv.byteLength < PKT.STATUS_LEN) return;
+  hand.status.mode    = dv.getUint8(PKT.sMode);
+  hand.status.step    = dv.getUint8(PKT.sStep);
+  hand.status.battery = dv.getUint8(PKT.sBattery);
+  hand.status.flags   = dv.getUint8(PKT.sFlags);
+  hand.status.error   = dv.getUint8(PKT.sError);
+  if (dv.byteLength >= PKT.sMountId + 4) hand.status.mountId = dv.getUint32(PKT.sMountId, true);
+  hand.status.known = true;
+}
+
+// The zeros a hand starts with (or keeps after a drop) are not readings.
+const isLinked = h => h.connected || simOn;
+const hasTelemetry = h => isLinked(h) && h.lastAt > 0 && performance.now() - h.lastAt <= 2000;
+const statusGap = h => !isLinked(h) ? 'Not connected. Connect this glove first.'
+                     : !h.status.known ? 'Waiting for the glove status…' : '';
+
+/* =========================== BLE connect / retry =========================== */
+function handForDevice(device) {
+  const n = device.name || '';
+  if (n.includes('-R')) return HANDS.R;
+  if (n.includes('-L')) return HANDS.L;
+  return null;
+}
+
+async function connectGlove(preferred) {
+  if (!bleAvailable) return;
+  let device;
+  try {
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: CONFIG.namePrefix }],
+      optionalServices: [CONFIG.service]
+    });
+  } catch (e) { return; }               // user cancelled the chooser
+  device.addEventListener('gattserverdisconnected', () => onBleDisconnect(device));
+  const hand = handForDevice(device) || preferred;
+  await bindGlove(hand, device);
+}
+
+async function bindGlove(hand, device) {
+  hand.device = device;
+  hand.status.known = false;
+  hand.connecting = true;
+  hand.retry = 0;
+  try {
+    const server = await device.gatt.connect();
+    const svc = await server.getPrimaryService(CONFIG.service);
+    hand.teleChar   = await svc.getCharacteristic(CONFIG.telemetry);
+    hand.cmdChar    = await svc.getCharacteristic(CONFIG.command);
+    hand.statusChar = await svc.getCharacteristic(CONFIG.status);
+    hand.calChar    = await svc.getCharacteristic(CONFIG.calInfo);
+    hand.teleChar.addEventListener('characteristicvaluechanged',
+      e => ingestTelemetry(hand, e.target.value));
+    hand.statusChar.addEventListener('characteristicvaluechanged',
+      e => ingestStatus(hand, e.target.value));
+    hand.calChar.addEventListener('characteristicvaluechanged',
+      e => parseCalInfo(hand, e.target.value));
+    await hand.teleChar.startNotifications();
+    await hand.statusChar.startNotifications();
+    await hand.calChar.startNotifications();
+    parseCalInfo(hand, await hand.calChar.readValue());   // full calibration table
+    hand.connected = true;
+    hand.connecting = false;
+  } catch (e) {
+    hand.connected = false;
+    hand.connecting = false;
+  }
+}
+
+function onBleDisconnect(device) {
+  const hand = Object.values(HANDS).find(h => h.device === device);
+  if (!hand) return;
+  hand.connected = false;
+  hand.status.known = false;
+  scheduleReconnect(hand);
+}
+
+// Auto-reconnect with exponential backoff (0.5 s .. 8 s, 5 attempts), then
+// the badge asks for a fresh click.
+function scheduleReconnect(hand) {
+  if (!hand.device || hand.retry >= 5) return;
+  const delay = 500 * Math.pow(2, hand.retry);
+  hand.retry++;
+  clearTimeout(hand.timer);
+  hand.timer = setTimeout(async () => {
+    hand.connecting = true;
+    try {
+      await hand.device.gatt.connect();
+      await hand.teleChar.startNotifications();    // re-arm subscriptions
+      await hand.statusChar.startNotifications();
+      await hand.calChar.startNotifications();
+      parseCalInfo(hand, await hand.calChar.readValue());
+      hand.connected = true;
+      hand.connecting = false;
+      hand.retry = 0;
+    } catch (e) {
+      hand.connecting = false;
+      scheduleReconnect(hand);
+    }
+  }, delay);
+}
+
+$('btnL').addEventListener('click', () => connectGlove(HANDS.L));
+$('btnR').addEventListener('click', () => connectGlove(HANDS.R));
+
+function sendCommand(hand, opcode, payload) {
+  if (!hand.cmdChar) return;
+  const bytes = new Uint8Array(1 + (payload ? payload.length : 0));
+  bytes[0] = opcode;
+  if (payload) bytes.set(payload, 1);
+  hand.cmdChar.writeValue(bytes).catch(() => {});
+}
+
+/* ============================ hand rendering =============================== */
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const SKIN = '#f2c19c', EDGE = '#b98a5f', TIP = '#f8d9c0';
+const FINGER_DEFS = [
+  { id: 'pinky',   x: 272, y: 272, w: 18, lens: [34, 25, 20] },
+  { id: 'ring',    x: 242, y: 265, w: 20, lens: [42, 30, 23] },
+  { id: 'middle',  x: 207, y: 258, w: 21, lens: [48, 34, 26] },
+  { id: 'pointer', x: 172, y: 261, w: 22, lens: [44, 32, 25] },
+  { id: 'thumb',   x: 152, y: 300, w: 24, lens: [48, 36], rotate: -32 }
+];
+const WEIGHTS = { 2: [0.6, 0.4], 3: [0.45, 0.35, 0.20] };
+
+// Build one hand card's SVG + readout rows + IMU tiles. Returns the pieces the
+// animation loop needs. The left hand is mirrored so it faces the right one.
+function buildHandVisuals(hand) {
+  const svg = $(hand.id === 'L' ? 'svgL' : 'svgR');
+  const mirror = el('g', {
+    transform: hand.id === 'L' ? 'translate(430 0) scale(-1 1)' : ''
+  }, svg);
+  const world = el('g', { id: 'world' + hand.id }, mirror);
+
+  el('circle', { cx: 215, cy: 290, r: 190, fill: '#101820' }, world);
+  el('rect', { x: 140, y: 255, width: 140, height: 155, rx: 30, fill: SKIN, stroke: EDGE, 'stroke-width': 2.5 }, world);
+  el('path', { d: 'M 168 330 Q 205 350 252 330', fill: 'none', stroke: '#d9a077', 'stroke-width': 2, 'stroke-linecap': 'round', opacity: .7 }, world);
+  el('path', { d: 'M 162 370 Q 200 390 240 370', fill: 'none', stroke: '#d9a077', 'stroke-width': 2, 'stroke-linecap': 'round', opacity: .7 }, world);
+  el('rect', { x: 165, y: 405, width: 90, height: 75, rx: 22, fill: SKIN, stroke: EDGE, 'stroke-width': 2.5 }, world);
+
+  const joints = {}, lensMap = {};
+  FINGER_DEFS.forEach(f => {
+    const base = el('g', {
+      transform: `translate(${f.x} ${f.y})${f.rotate ? ' rotate(' + f.rotate + ')' : ''}`
+    }, world);
+    joints[f.id] = [];
+    lensMap[f.id] = f.lens;
+    let parent = el('g', {}, base);
+    joints[f.id].push(parent);
+    el('rect', { x: -f.w / 2, y: -f.lens[0], width: f.w, height: f.lens[0], rx: f.w / 2, fill: SKIN, stroke: EDGE, 'stroke-width': 2.5 }, parent);
+    for (let i = 1; i < f.lens.length; i++) {
+      parent = el('g', { transform: `translate(0 ${-f.lens[i - 1]})` }, parent);
+      joints[f.id].push(parent);
+      el('rect', { x: -f.w / 2, y: -f.lens[i], width: f.w, height: f.lens[i], rx: f.w / 2, fill: SKIN, stroke: EDGE, 'stroke-width': 2.5 }, parent);
+      if (i === f.lens.length - 1) {
+        el('ellipse', { cx: 0, cy: -f.lens[i] + 6, rx: f.w * 0.3, ry: 5.5, fill: TIP }, parent);
+      }
+    }
+  });
+  function setBend(fingerId, angle) {
+    const js = joints[fingerId], lens = lensMap[fingerId];
+    const w = WEIGHTS[js.length] || [1];
+    for (let i = 0; i < js.length; i++) {
+      const a = angle * w[i];
+      js[i].setAttribute('transform', i === 0
+        ? `rotate(${a})`
+        : `translate(0 ${-lens[i - 1]}) rotate(${a})`);
+    }
+  }
+
+  const rows = $(hand.id === 'L' ? 'rowsL' : 'rowsR');
+  const rowEls = {};
+  FINGERS.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'frow';
+    row.innerHTML = `<span class="fn">${f}</span><div class="track"><div class="fill"></div></div><span class="fv">0°</span>`;
+    rows.appendChild(row);
+    rowEls[f] = { fill: row.querySelector('.fill'), val: row.querySelector('.fv') };
+  });
+
+  const imuBox = $(hand.id === 'L' ? 'imuL' : 'imuR');
+  const imuEls = {};
+  ['roll', 'pitch', 'yaw'].forEach(a => {
+    const tile = document.createElement('div');
+    tile.className = 'imutile';
+    tile.innerHTML = `<div class="l">${a}</div><div class="v">0.0</div>`;
+    imuBox.appendChild(tile);
+    imuEls[a] = tile.querySelector('.v');
+  });
+  const zeroBtn = document.createElement('button');
+  zeroBtn.className = 'small ghost';
+  zeroBtn.textContent = 'zero yaw';
+  zeroBtn.title = 'Re-baseline the drifting yaw (no magnetometer) — hold the glove in its neutral heading first';
+  zeroBtn.addEventListener('click', () => sendCommand(hand, CMD.ZERO_YAW));
+  imuBox.appendChild(zeroBtn);
+
+  return { world, setBend, rowEls, imuEls };
+}
+const VIS = { L: buildHandVisuals(HANDS.L), R: buildHandVisuals(HANDS.R) };
+
+/* ========================== gesture classifier ============================= */
+// Temporary client-side threshold rules until the on-glove TFLM model lands.
+// Letters that differ only by thumb motion/abduction collapse (e.g. U/H/K/P,
+// D/G/L); dynamic letters (J, Z) need the IMU trajectory.
+const DEFAULT_RULES = [
+  { id: 'FIST', label: 'FIST', letters: 'A · E · O · S · M · N · T · X', min: { t: 45, p: 65, m: 65, r: 65, y: 65 } },
+  { id: 'B',    label: 'B',    letters: 'B',                              min: { t: 65 }, max: { p: 25, m: 25, r: 25, y: 25 } },
+  { id: 'F',    label: 'F',    letters: 'F',                              max: { t: 45, p: 25, m: 25, r: 25, y: 25 } },
+  { id: 'DGL',  label: 'D-G-L', letters: 'D · G · L',                     min: { t: 45, m: 65, r: 65, y: 65 }, max: { p: 25 } },
+  { id: 'V',    label: 'V',    letters: 'V',                              min: { t: 65, r: 65, y: 65 }, max: { p: 25, m: 25 } },
+  { id: 'UKP',  label: 'U-K-P', letters: 'U · H · K · P · R',             min: { r: 65, y: 65 }, max: { t: 45, p: 25, m: 25 } },
+  { id: 'W',    label: 'W',    letters: 'W',                              min: { y: 45 }, max: { t: 65, p: 25, m: 25, r: 25 } },
+  { id: 'I',    label: 'I',    letters: 'I',                              min: { t: 65, p: 65, m: 65, r: 65 }, max: { y: 25 } },
+  { id: 'Y',    label: 'Y',    letters: 'Y',                              min: { p: 65, m: 65, r: 65 }, max: { t: 25, y: 25 } },
+  { id: 'C',    label: 'C',    letters: 'C',                              min: { t: 25, p: 25, m: 25, r: 25, y: 25 }, max: { t: 65, p: 65, m: 65, r: 65, y: 65 } }
+];
+let RULES = DEFAULT_RULES;
+
+function matchRule(rule, a) {
+  if (rule.min) for (const f in rule.min) if (a[f] < rule.min[f]) return false;
+  if (rule.max) for (const f in rule.max) if (a[f] > rule.max[f]) return false;
+  return true;
+}
+function classify(hand) {
+  const a = { t: hand.angles.thumb, p: hand.angles.pointer, m: hand.angles.middle,
+              r: hand.angles.ring,  y: hand.angles.pinky };
+  for (const rule of RULES) if (matchRule(rule, a)) return rule;
+  return null;
+}
+function updateGesture(hand) {
+  if (!hasTelemetry(hand)) {
+    hand.predRing.length = 0;
+    $(hand.id === 'L' ? 'gestL' : 'gestR').textContent = '—';
+    $(hand.id === 'L' ? 'nameL' : 'nameR').textContent = 'no gesture';
+    return;
+  }
+  const g = classify(hand);
+  hand.predRing.push(g ? g.id : null);
+  if (hand.predRing.length > 20) hand.predRing.shift();
+  const counts = {};
+  hand.predRing.forEach(id => { if (id) counts[id] = (counts[id] || 0) + 1; });
+  let best = null, bestN = 0;
+  for (const id in counts) if (counts[id] > bestN) { best = id; bestN = counts[id]; }
+  if (best && bestN >= 10) {
+    const rule = RULES.find(x => x.id === best);
+    $(hand.id === 'L' ? 'gestL' : 'gestR').textContent = rule.label;
+    $(hand.id === 'L' ? 'nameL' : 'nameR').textContent = '≈ ' + rule.letters;
+  }
+}
+
+/* rules editor */
+$('rulesText').value = JSON.stringify(DEFAULT_RULES, null, 1);
+$('applyRules').addEventListener('click', () => {
+  try {
+    const parsed = JSON.parse($('rulesText').value);
+    if (!Array.isArray(parsed)) throw new Error('expected an array');
+    RULES = parsed;
+    $('rulesMsg').textContent = 'applied (' + RULES.length + ' rules)';
+  } catch (e) {
+    $('rulesMsg').textContent = 'parse error: ' + e.message;
+  }
+});
+$('resetRules').addEventListener('click', () => {
+  RULES = DEFAULT_RULES;
+  $('rulesText').value = JSON.stringify(DEFAULT_RULES, null, 1);
+  $('rulesMsg').textContent = 'defaults restored';
+});
+
+/* ============================ calibration wizard =========================== */
+function wizHand() {
+  return $('wizL').checked ? HANDS.L : HANDS.R;
+}
+function wizInstruction() {
+  const h = wizHand();
+  const st = h.status;
+  const gap = statusGap(h);
+  if (gap) return gap;
+  if (st.mode !== 1) {
+    if (st.step === 0 && !(st.flags & 1)) return 'Glove calibrated — press Start to recalibrate.';
+    return 'Idle. Press Start to calibrate: thumb → pointer → middle → ring → pinky, flat then 90° each.';
+  }
+  const finger = FINGERS[Math.floor((st.step - 1) / 2)];
+  const phase = st.step % 2 === 1 ? 'FLAT' : '90° bend';
+  return `Step ${st.step}/10 — ${finger}: hold it ${phase}, then press Capture.`;
+}
+function wizExtra() {
+  if (statusGap(wizHand())) return '';
+  const st = wizHand().status;
+  let s = '';
+  if (st.battery !== UNKNOWN_BATTERY) s += 'Battery: ' + st.battery + '%. ';
+  if (st.flags & 1) s += 'Uncalibrated — placeholder angles in use. ';
+  if (st.error === 1) s += 'Last capture was ignored (not in calibration mode). ';
+  if (st.error === 2) s += 'Glove rejected an unknown command. ';
+  if (st.error === 3) s += '90° too close to flat — redo this capture. ';
+  if (st.error === 4) s += 'Finger resistance outside 1k..100k (wiring fault) — finger excluded. ';
+  return s;
+}
+
+/* ========================== IMU mount calibration ========================== */
+const IMU_ERR = {
+  5: 'No IMU detected on the glove.',
+  6: 'Gravity magnitude off by more than 15% (glove moving?). Hold still and redo that pose.',
+  7: 'Pose 2 is not perpendicular to Pose 1. Point the fingers straight up and redo Pose 2.',
+  8: 'Capture Pose 1 first.',
+  9: 'Glove moved during gyro calibration. Hold still and redo.',
+  10: 'Gyro shows zero noise and is not responding. Check the IMU.'
+};
+function imuStatusText() {
+  const gap = statusGap(wizHand());
+  if (gap) return gap;
+  const st = wizHand().status;
+  // id 0 = the glove runs on the config.h default (config.h STATUS layout)
+  let s = (st.flags & 2) || !st.mountId ? 'Mount UNCALIBRATED (config.h default R_MOUNT). '
+                         : 'Mount calibrated, mount_calibration_id ' + st.mountId + '. ';
+  if (st.flags & 4) s += 'Gyro bias NOT calibrated, so yaw will drift fast. ';
+  if (IMU_ERR[st.error]) s += 'Last IMU command: ' + IMU_ERR[st.error];
+  return s;
+}
+$('imuGyro').addEventListener('click', () => sendCommand(wizHand(), CMD.CAL_GYRO));
+$('imuPose1').addEventListener('click', () => sendCommand(wizHand(), CMD.MOUNT_POSE1));
+$('imuPose2').addEventListener('click', () => sendCommand(wizHand(), CMD.MOUNT_POSE2));
+
+// Span of an angle series over the window, unwrapping +/-180 jumps.
+function span(hist, key, ms) {
+  const now = performance.now();
+  const h = hist.filter(p => now - p.t <= ms);
+  if (h.length < 2) return null;
+  let v = 0, lo = 0, hi = 0;
+  for (let i = 1; i < h.length; i++) {
+    let d = h[i][key] - h[i - 1][key];
+    d = ((d + 540) % 360) - 180;
+    v += d; lo = Math.min(lo, v); hi = Math.max(hi, v);
+  }
+  return { span: hi - lo, cover: now - h[0].t, h };
+}
+const maxAbs = (h, key) => Math.max(...h.map(p => Math.abs(p[key])));
+// Rows of the verification table: [pose, expected, live(hand) -> {txt, ok}]; ok null = not tested
+const IMU_CHECKS = [
+  ['Palm down, level, fingers forward', 'roll ~0, pitch ~0, az ~ +9.81', h => {
+    const az = 9.81 * Math.cos(h.imu.roll * Math.PI / 180) * Math.cos(h.imu.pitch * Math.PI / 180);
+    return { txt: `roll ${h.imu.roll.toFixed(1)}, pitch ${h.imu.pitch.toFixed(1)}, az ${az.toFixed(2)}`,
+             ok: Math.abs(h.imu.roll) < 10 && Math.abs(h.imu.pitch) < 10 && az > 8.8 }; }],
+  ['Fingers straight up', 'pitch ~ +90', h =>
+    ({ txt: `pitch ${h.imu.pitch.toFixed(1)}`, ok: h.imu.pitch > 80 })],
+  ['Fingers straight down', 'pitch ~ -90', h =>
+    ({ txt: `pitch ${h.imu.pitch.toFixed(1)}`, ok: h.imu.pitch < -80 })],
+  ['Palm up, level', 'roll ~ ±180, az ~ -9.81', h => {
+    const az = 9.81 * Math.cos(h.imu.roll * Math.PI / 180) * Math.cos(h.imu.pitch * Math.PI / 180);
+    return { txt: `roll ${h.imu.roll.toFixed(1)}, az ${az.toFixed(2)}`,
+             ok: Math.abs(h.imu.roll) > 170 && az < -8.8 }; }],
+  ['Rotate about the finger axis', 'roll changes, pitch stays near 0', h => {
+    const r = span(h.imuHist, 'roll', 3000);
+    if (!r) return { txt: 'no data', ok: null };
+    const mp = maxAbs(r.h, 'pitch');
+    return { txt: `roll span ${r.span.toFixed(0)}, max |pitch| ${mp.toFixed(1)}`, ok: r.span > 45 && mp < 15 }; }],
+  ['Rotate palm-down hand left/right (yaw)', 'yaw changes, roll/pitch near 0', h => {
+    const y = span(h.imuHist, 'yaw', 3000);
+    if (!y) return { txt: 'no data', ok: null };
+    const mr = maxAbs(y.h, 'roll'), mp = maxAbs(y.h, 'pitch');
+    return { txt: `yaw span ${y.span.toFixed(0)}, max |roll| ${mr.toFixed(1)}, |pitch| ${mp.toFixed(1)}`,
+             ok: y.span > 30 && mr < 15 && mp < 15 }; }],
+  ['Hand still for 10 s', 'yaw drift < 1 deg / 10 s, roll/pitch steady', h => {
+    const y = span(h.imuHist, 'yaw', 10000), r = span(h.imuHist, 'roll', 10000), p = span(h.imuHist, 'pitch', 10000);
+    if (!y || y.cover < 9500) return { txt: 'collecting 10 s…', ok: null };
+    return { txt: `yaw drift ${y.span.toFixed(2)}, roll span ${r.span.toFixed(2)}, pitch span ${p.span.toFixed(2)}`,
+             ok: y.span < 1 && r.span < 1.5 && p.span < 1.5 }; }]
+];
+function imuCheckRefresh() {
+  const h = wizHand();
+  $('imuStatus').textContent = imuStatusText();
+  const rows = IMU_CHECKS.map(([pose, exp, f]) => {
+    const r = hasTelemetry(h) ? f(h) : { txt: isLinked(h) ? 'no data' : 'not connected', ok: null };
+    const [verdict, color] = r.ok === null ? ['—', 'muted'] : r.ok ? ['PASS', 'ok'] : ['FAIL', 'bad'];
+    return `<tr><td>${pose}</td><td>${exp}</td><td>${r.txt}</td>` +
+           `<td style="font-weight:700;color:var(--${color})">${verdict}</td></tr>`;
+  });
+  $('imuCheck').innerHTML = '<tr><th align="left">Pose</th><th align="left">Expected</th><th align="left">Live</th><th></th></tr>' + rows.join('');
+}
+function wizCaptureLabel() {
+  const st = wizHand().status;
+  if (st.mode === 1 && st.step % 2 === 1) return 'Capture FLAT';
+  if (st.mode === 1 && st.step % 2 === 0) return 'Capture 90°';
+  return 'Capture';
+}
+$('wizStart').addEventListener('click', () => sendCommand(wizHand(), CMD.START));
+$('wizCapture').addEventListener('click', () => {
+  const h = wizHand();
+  const odd = h.status.step % 2 === 1;
+  sendCommand(h, h.status.mode === 1 && h.status.step > 0 ? (odd ? CMD.FLAT : CMD.BEND90) : CMD.FLAT);
+});
+$('wizCancel').addEventListener('click', () => sendCommand(wizHand(), CMD.CANCEL));
+$('wizL').addEventListener('change', wizRefresh);
+$('wizR').addEventListener('change', wizRefresh);
+
+/* ============================== dataset recorder ============================ */
+// Samples are tied to the glove's calibration profile: one session per
+// (hand, calibration_id, mount_calibration_id). If either id changes
+// mid-session the session closes and a new one starts — files never mix
+// calibrations.
+// ML NOTE: roll wraps at +/-180 (palm up flips +179.9 <-> -179.9). Train on
+// sin/cos(roll) or the gravity vector, never on raw roll degrees.
+// Frames with raw ADC 0/4095 on a valid finger, or a seq gap beyond
+// SEQ_GAP_MAX, are dropped and counted per session.
+const FINGER_KEYS = ['thumb', 'pointer', 'middle', 'ring', 'pinky'];
+
+function newSession(hand, signer) {
+  return {
+    id: 'S-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    hand: hand.id, signerId: signer, calId: hand.calId, mountId: hand.status.mountId,
+    fwVersion: hand.fwVersion || '',
+    cal: hand.cal ? JSON.parse(JSON.stringify(hand.cal)) : null,
+    takeId: 1, rows: [], dropped: { adcRail: 0, seqGap: 0 },
+    startedAt: new Date().toISOString()
+  };
+}
+const sessions = { L: [], R: [] };     // finished sessions per hand
+const active = { L: null, R: null };   // sessions being recorded
+let recording = false, recTimer = null, recLabel = '';
+
+function anonSigner() {
+  return 'anon-' + Math.random().toString(16).slice(2, 6).toUpperCase();
+}
+
+const sameCal = (s, hand) => s.calId === hand.calId && s.mountId === hand.status.mountId;
+
+function ensureSession(hand) {
+  let s = active[hand.id];
+  if (s && sameCal(s, hand)) return s;
+  if (s) { sessions[hand.id].push(s); active[hand.id] = null; }  // cal changed: close
+  s = newSession(hand, $('signerInput').value.trim() || anonSigner());
+  active[hand.id] = s;
+  return s;
+}
+
+function captureRows() {
+  [HANDS.L, HANDS.R].forEach(h => {
+    if (!recording || !h.connected) return;
+    const sess = ensureSession(h);
+    for (let i = 0; i < 5; i++) {
+      if ((h.raw[i] === 0 || h.raw[i] === 4095) && (h.validMask & (1 << i))) {
+        sess.dropped.adcRail++; return;                 // sensor disconnected
+      }
+    }
+    if (h.lastGap > SEQ_GAP_MAX) { sess.dropped.seqGap++; return; }  // seq jump
+    sess.rows.push({ t: Date.now(), label: recLabel, raw: h.raw.slice(),
+                     roll: h.imu.roll, pitch: h.imu.pitch, yaw: h.imu.yaw,
+                     quality: h.quality });
+  });
+  updateRecStatus();
+}
+
+$('recBtn').addEventListener('click', () => {
+  recording = !recording;
+  if (recording) {
+    recLabel = $('labelInput').value.trim() || 'UNLABELED';
+    [HANDS.L, HANDS.R].forEach(h => {
+      if (h.connected) {
+        const s = active[h.id];
+        if (s && sameCal(s, h)) s.takeId++;             // new take, same calibration
+        else ensureSession(h);                          // creates with takeId 1
+      }
+    });
+    $('recBtn').textContent = '■ Stop recording';
+    $('recBtn').classList.add('rec', 'on');
+    recTimer = setInterval(captureRows, 200);
+  } else {
+    clearInterval(recTimer);
+    [HANDS.L, HANDS.R].forEach(h => {
+      if (active[h.id]) { sessions[h.id].push(active[h.id]); active[h.id] = null; }
+    });
+    $('recBtn').textContent = '● Start recording';
+    $('recBtn').classList.remove('rec', 'on');
+  }
+  updateRecStatus();
+});
+
+function updateRecStatus() {
+  if (recording) {
+    const parts = [];
+    [HANDS.L, HANDS.R].forEach(h => {
+      const s = active[h.id];
+      if (s) parts.push(h.id + ': ' + s.id + ' cal=' + s.calId + ' mount=' + s.mountId +
+                       ' take=' + s.takeId + ' rows=' + s.rows.length +
+                       ' dropped=' + (s.dropped.adcRail + s.dropped.seqGap));
+    });
+    $('recStatus').textContent = 'Recording "' + recLabel + '" — ' +
+      (parts.length ? parts.join(' · ') : 'no gloves connected');
+    return;
+  }
+  const all = [...sessions.L, ...sessions.R];
+  let rows = 0, dropped = 0;
+  all.forEach(s => { rows += s.rows.length; dropped += s.dropped.adcRail + s.dropped.seqGap; });
+  $('recStatus').textContent = all.length
+    ? ('Stopped — ' + all.length + ' session(s), ' + rows + ' rows, ' + dropped +
+       ' dropped frames. Export CSV + sidecar to download.')
+    : 'No recording yet. Enter a label, press Start, perform the sign repeatedly, then Stop.';
+}
+
+function ohmFromRaw(raw, rdiv) {
+  let a = raw; if (a <= 0) a = 1; if (a >= 4095) a = 4094;
+  return rdiv * (4095 - a) / a;
+}
+function angFromOhm(r, flat, bent) {
+  const d = bent - flat;
+  if (Math.abs(d) < 1) return 0;
+  return Math.max(0, Math.min(90, 90 * (r - flat) / d));
+}
+
+function sessionFiles(sess) {
+  const cal = sess.cal || {};
+  const thumbValid = !!(cal.validMask & 0x01);   // thumb columns only when it passed
+  const fKeys = thumbValid ? FINGER_KEYS : FINGER_KEYS.slice(1);
+  const cols = ['timestamp_ms', 'session_id', 'signer_id', 'hand', 'calibration_id',
+                'label', 'take_id'];
+  fKeys.forEach(f => cols.push('raw_' + f));
+  fKeys.forEach(f => cols.push('ohm_' + f));
+  fKeys.forEach(f => cols.push('ang_' + f));
+  cols.push('roll', 'pitch', 'yaw', 'quality_flag');
+  const idx = {}; FINGER_KEYS.forEach((f, i) => idx[f] = i);
+  const csvRows = sess.rows.map(r => {
+    const vals = [r.t, sess.id, sess.signerId, sess.hand, sess.calId, r.label, sess.takeId];
+    fKeys.forEach(f => {
+      const i = idx[f];
+      vals.push(r.raw[i]);
+      const ohm = ohmFromRaw(r.raw[i], cal.rdiv ? cal.rdiv[i] : 0);
+      vals.push(ohm.toFixed(1));
+      vals.push(angFromOhm(ohm, cal.flat ? cal.flat[i] : 0, cal.bent ? cal.bent[i] : 0).toFixed(1));
+    });
+    vals.push(r.roll.toFixed(1), r.pitch.toFixed(1), r.yaw.toFixed(1), r.quality);
+    return vals.join(',');
+  });
+  const fingers = {};
+  FINGER_KEYS.forEach((f, i) => {
+    fingers[f] = {
+      valid: !!(cal.validMask & (1 << i)),
+      weak: !!(cal.weakMask & (1 << i)),
+      flat_ohm: cal.flat ? cal.flat[i] : null,
+      bent90_ohm: cal.bent ? cal.bent[i] : null,
+      flat_adc: cal.flatAdc ? cal.flatAdc[i] : null,
+      bent90_adc: cal.bentAdc ? cal.bentAdc[i] : null,
+      span_counts: cal.span ? cal.span[i] : null
+    };
+  });
+  const sidecar = {
+    session_id: sess.id, signer_id: sess.signerId, hand: sess.hand,
+    calibration_id: sess.calId, mount_calibration_id: sess.mountId,
+    roll_note: 'roll wraps at +/-180; use sin/cos(roll) or the gravity vector as ML features',
+    sample_rate_hz: 5, firmware_version: sess.fwVersion,
+    recorded_at: sess.startedAt, rows: sess.rows.length,
+    dropped_frames: sess.dropped.adcRail + sess.dropped.seqGap,
+    dropped: sess.dropped, r_div: cal.rdiv || [], fingers
+  };
+  const stamp = sess.id;
+  return [
+    { name: 'talkhimik_' + sess.hand + '_' + stamp + '_cal' + sess.calId + '.csv',
+      text: cols.join(',') + '\n' + csvRows.join('\n') + (csvRows.length ? '\n' : '') },
+    { name: 'talkhimik_' + sess.hand + '_' + stamp + '_cal' + sess.calId + '_sidecar.json',
+      text: JSON.stringify(sidecar, null, 2) }
+  ];
+}
+
+function downloadText(name, text) {
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+$('exportBtn').addEventListener('click', () => {
+  const all = [...sessions.L, ...sessions.R];
+  if (!all.length) {
+    $('recStatus').textContent = recording
+      ? 'Still recording — press Stop first, then export.'
+      : 'Nothing to export yet.';
+    return;
+  }
+  let n = 0;
+  all.forEach(s => sessionFiles(s).forEach(f => { downloadText(f.name, f.text); n++; }));
+  $('recStatus').textContent = 'Exported ' + n + ' file(s) from ' + all.length + ' session(s).';
+});
+
+$('clearBtn').addEventListener('click', () => {
+  sessions.L.length = 0;
+  sessions.R.length = 0;
+  active.L = null;
+  active.R = null;
+  updateRecStatus();
+});
+
+/* ============================== simulate mode ============================== */
+let simOn = false, simTimer = null;
+const simSeq = { L: 0, R: 0 }, simJump = { L: 0, R: 0 };
+
+function fakePacket(hand) {
+  const buf = new ArrayBuffer(PKT.TELE_LEN);
+  const dv = new DataView(buf);
+  const t = performance.now();
+  simSeq[hand.id] = (simSeq[hand.id] + 1) & 0xFFFF;
+  if (Math.floor(t / 7000) !== simJump[hand.id]) {   // demo a loss burst
+    simJump[hand.id] = Math.floor(t / 7000);
+    simSeq[hand.id] = (simSeq[hand.id] + 3) & 0xFFFF;
+  }
+  dv.setUint8(PKT.tHand, hand.id === 'L' ? 0 : 1);
+  dv.setUint16(PKT.tSeq, simSeq[hand.id], true);
+  const ph = hand.id === 'L' ? 0 : Math.PI / 2;
+  FINGERS.forEach((f, i) => {
+    const a = 45 + 40 * Math.sin(t / 600 + ph + i * 0.9);
+    const deg = Math.max(0, Math.min(90, Math.round(a)));
+    dv.setUint8(PKT.tFlex + i, deg);
+    dv.setUint16(PKT.tRaw + i * 2, 4095 - deg * 38, true);   // plausible raw ADC
+  });
+  dv.setInt16(PKT.tRoll,  Math.round(30 * Math.sin(t / 900  + ph) * 10), true);
+  dv.setInt16(PKT.tPitch, Math.round(20 * Math.sin(t / 700  + ph) * 10), true);
+  dv.setInt16(PKT.tYaw,   Math.round(15 * Math.sin(t / 1100 + ph) * 10), true);
+  dv.setUint32(PKT.tCalId, hand.calId || 1, true);
+  dv.setUint8(PKT.tQuality, 0x1F);
+  ingestTelemetry(hand, dv);
+}
+function fakeCalInfo(hand) {
+  const buf = new ArrayBuffer(PKT.CAL_LEN);
+  const dv = new DataView(buf);
+  dv.setUint8(PKT.cValid, 0x1F);
+  dv.setUint8(PKT.cWeak, 0);
+  dv.setUint32(PKT.cCalId, 1, true);
+  const flat = [20000, 17632, 12954, 7537, 13070];
+  const bent = [18000, 15309, 11207, 6707, 11519];
+  for (let i = 0; i < 5; i++) {
+    dv.setFloat32(PKT.cFlatOhm + i * 4, flat[i], true);
+    dv.setFloat32(PKT.cBentOhm + i * 4, bent[i], true);
+    dv.setUint16(PKT.cFlatAdc + i * 2, 1400, true);
+    dv.setUint16(PKT.cBentAdc + i * 2, 1500, true);
+    dv.setFloat32(PKT.cRdiv + i * 4, 10000, true);
+    dv.setUint16(PKT.cSpan + i * 2, 100, true);
+  }
+  for (let i = 0; i < 3; i++) dv.setUint8(PKT.cFwVer + i, 'SIM'.charCodeAt(i));
+  parseCalInfo(hand, dv);
+  hand.calId = 1;
+}
+function fakeStatus(hand) {
+  const buf = new ArrayBuffer(PKT.STATUS_LEN);
+  const dv = new DataView(buf);
+  dv.setUint8(PKT.sMode, 0);
+  dv.setUint8(PKT.sStep, 0);
+  dv.setUint8(PKT.sBattery, 84);
+  dv.setUint8(PKT.sFlags, 0);
+  dv.setUint8(PKT.sError, 0);
+  ingestStatus(hand, dv);
+}
+$('simToggle').addEventListener('change', () => {
+  simOn = $('simToggle').checked;
+  if (simOn) {
+    fakeStatus(HANDS.L); fakeStatus(HANDS.R);
+    fakeCalInfo(HANDS.L); fakeCalInfo(HANDS.R);
+    simTimer = setInterval(() => { fakePacket(HANDS.L); fakePacket(HANDS.R); }, 50);
+  } else {
+    clearInterval(simTimer);
+    HANDS.L.status.known = HANDS.R.status.known = false;   // next real STATUS replaces it
+  }
+});
+
+/* ============================== animation loop ============================= */
+function updateHandVisuals(hand) {
+  const vis = VIS[hand.id];
+  FINGERS.forEach(f => {
+    const a = hand.angles[f];
+    vis.setBend(f, a);
+    vis.rowEls[f].fill.style.width = (a / 90 * 100) + '%';
+    vis.rowEls[f].val.textContent = a.toFixed(0) + '°';
+  });
+  ['roll', 'pitch', 'yaw'].forEach(a => { vis.imuEls[a].textContent = hand.imu[a].toFixed(1); });
+  // wrist rotation: rotate the whole hand by roll (mirror group is outside)
+  vis.world.setAttribute('transform',
+    `translate(215 290) rotate(${hand.imu.roll.toFixed(1)}) translate(-215 -290)`);
+}
+
+function updateBadge(hand) {
+  const el2 = $(hand.id === 'L' ? 'stateL' : 'stateR');
+  const stale = hand.connected && performance.now() - hand.lastAt > 2000;
+  if (simOn) {
+    el2.className = 'state sim';
+    el2.innerHTML = '<span class="dot"></span>SIM';
+    return;
+  }
+  if (hand.connected) {
+    const age = hand.lastAt ? Math.round(performance.now() - hand.lastAt) : 0;
+    const loss = hand.total + hand.lost ? (hand.lost / (hand.total + hand.lost) * 100).toFixed(1) : '0.0';
+    el2.className = 'state' + (stale ? ' wait' : ' on');
+    el2.innerHTML = `<span class="dot"></span>connected · ${age} ms · ${loss}% loss · ${hand.recent.length} Hz`;
+    return;
+  }
+  if (hand.connecting) {
+    el2.className = 'state wait';
+    el2.innerHTML = '<span class="dot"></span>connecting…';
+    return;
+  }
+  if (hand.retry >= 5 && hand.device) {
+    el2.className = 'state';
+    el2.innerHTML = '<span class="dot"></span>reconnect failed — click to retry';
+    return;
+  }
+  el2.className = 'state';
+  el2.innerHTML = '<span class="dot"></span>disconnected';
+}
+
+function wizRefresh() {
+  $('wizStatus').textContent = wizInstruction();
+  $('wizExtra').textContent = wizExtra();
+  const h = wizHand();
+  $('wizCapture').disabled = !(h.status.mode === 1 && h.status.step > 0);
+  $('wizCapture').textContent = wizCaptureLabel();
+  $('wizCancel').disabled = h.status.mode !== 1;
+}
+
+function frame() {
+  [HANDS.L, HANDS.R].forEach(h => {
+    updateHandVisuals(h);
+    updateBadge(h);
+    updateGesture(h);
+  });
+  wizRefresh();
+  imuCheckRefresh();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

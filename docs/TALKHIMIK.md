@@ -406,8 +406,9 @@ seq-gap loss, trailing-second update rate, mismatch flag):
 
 The thesis-level narrative (architecture, phases, budget, ML pipeline) lives
 in the thesis folder: `Desktop/thesis sep4/` — `TALKHIMIK_System_Architecture.md`,
-`TALKHIMIK_Code_Reference.md`, and the firmware repo `talkhimik-ble/`
-(README: wiring, build steps, packet quickstart).
+`TALKHIMIK_Code_Reference.md`. The firmware and web dashboard are in this
+repo: [`talkhimik-ble/`](../talkhimik-ble/README.md) (wiring, build steps,
+packet quickstart).
 
 ---
 
