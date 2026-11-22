@@ -44,9 +44,9 @@ void main() {
   });
 
   test('a frame exactly at the freshness edge is not stale', () {
-    final at = DateTime.now()
-        .subtract(const Duration(milliseconds: 500));
-    expect(RefuseGate.evaluate(frame(at: at)), GateReason.none);
+    final now = DateTime.now();
+    final at = now.subtract(const Duration(milliseconds: 500));
+    expect(RefuseGate.evaluate(frame(at: at), now: now), GateReason.none);
   });
 
   test('an invalid finger (missing quality bit) refuses as invalidFinger',
