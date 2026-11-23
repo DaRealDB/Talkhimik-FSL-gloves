@@ -87,8 +87,10 @@ void main() {
   test('flexing a finger curls its tip toward the palm side', () {
     final flat = HandMesh.build(const [0, 0, 0, 0, 0], left: false);
     final bent = HandMesh.build(const [0, 90, 0, 0, 0], left: false);
-    expect(bent.tips[1].z, lessThan(flat.tips[1].z - 0.3));
-    expect(bent.tips[1].x, lessThan(flat.tips[1].x));
+    // A full 90° reading closes a fist: the tip folds back toward the wrist
+    // and tucks under the palm (below the knuckle plane).
+    expect(bent.tips[1].z, lessThan(flat.tips[1].z - 0.1));
+    expect(bent.tips[1].x, lessThan(flat.tips[1].x - 0.8));
     // Other fingers do not move.
     expectVec(bent.tips[2], flat.tips[2]);
   });
